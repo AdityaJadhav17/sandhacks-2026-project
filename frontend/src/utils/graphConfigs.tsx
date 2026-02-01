@@ -1,15 +1,19 @@
 /**
  * Copyright AGNTCY Contributors (https://github.com/agntcy)
  * SPDX-License-Identifier: Apache-2.0
+ * 
+ * Graph Configurations for Travel Agent
+ * 
+ * This module defines the visual graph configuration for the Travel Planning Agent.
+ * The travel agent has a simplified architecture compared to the original coffee demo:
+ * - Single supervisor node (Travel Agent)
+ * - External API connection (SerpAPI) instead of farm workers
  **/
 
-import { TiWeatherCloudy } from "react-icons/ti"
-import { Truck, Calculator, Search, Brain, FileText, Plane } from "lucide-react"
+import { Plane, Hotel, MapPin } from "lucide-react"
 import { Node, Edge } from "@xyflow/react"
 import supervisorIcon from "@/assets/supervisor.png"
-import farmAgentIcon from "@/assets/Grader-Agent.png"
 import {
-  FarmName,
   NODE_IDS,
   EDGE_IDS,
   NODE_TYPES,
@@ -29,35 +33,43 @@ export interface GraphConfig {
   animationSequence: { ids: string[] }[]
 }
 
-const TravelAgentIcon = (
-  <Plane className="dark-icon h-4 w-4 object-contain opacity-100" />
-)
-
-const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
-  title: "Travel Agent Flight Search Network",
+/**
+ * Travel Search Configuration with A2A Communication
+ * 
+ * Architecture:
+ * - Travel Supervisor: Main agent that coordinates the search (A2A Client)
+ * - NATS Transport: A2A message transport layer
+ * - Flight Agent: A2A agent that searches flights via SerpAPI
+ * - Hotel Agent: A2A agent that searches hotels via SerpAPI
+ */
+const TRAVEL_SEARCH_CONFIG: GraphConfig = {
+  title: "Travel Planning Agent Network (A2A)",
   nodes: [
+    // Travel Supervisor Node - Main agent
     {
-      id: NODE_IDS.AUCTION_AGENT,
+      id: NODE_IDS.AUCTION_AGENT,  // Reusing ID for compatibility
       type: NODE_TYPES.CUSTOM,
       data: {
         icon: (
           <img
             src={supervisorIcon}
-            alt="Travel Coordinator Icon"
+            alt="Supervisor Icon"
             className="dark-icon h-4 w-4 object-contain"
           />
         ),
-        label1: "Travel Coordinator",
-        label2: "Trip Planner",
+        label1: "Travel Agent",
+        label2: "Supervisor",
         handles: HANDLE_TYPES.SOURCE,
         verificationStatus: VERIFICATION_STATUS.VERIFIED,
         hasBadgeDetails: true,
         hasPolicyDetails: true,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.supervisorAuction}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}${urlsConfig.agentDirectory.agents.supervisorAuction}`,
+        // GitHub link - update this to point to travel supervisor
+        githubLink: `${urlsConfig.github.baseUrl}/agents/supervisors/travel`,
+        agentDirectoryLink: urlsConfig.agentDirectory.baseUrl,
       },
-      position: { x: 527.1332569384248, y: 76.4805787605829 },
+      position: { x: 450, y: 80 },
     },
+    // Transport Node - Shows NATS/SLIM transport
     {
       id: NODE_IDS.TRANSPORT,
       type: NODE_TYPES.TRANSPORT,
@@ -65,89 +77,59 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
         label: "Transport: ",
         githubLink: `${urlsConfig.github.appSdkBaseUrl}${urlsConfig.github.transports.general}`,
       },
-      position: { x: 229.02370449534635, y: 284.688426426175 },
+      position: { x: 350, y: 280 },
     },
+    // Flight Search Agent Node - A2A Server
     {
-      id: NODE_IDS.BRAZIL_FARM,
+      id: NODE_IDS.BRAZIL_FARM,  // Reusing ID for compatibility
       type: NODE_TYPES.CUSTOM,
       data: {
-        icon: <Search className="dark-icon h-4 w-4 object-contain opacity-100" />,
-        label1: "Scout",
-        label2: "Flight Search Agent",
+        icon: <Plane className="dark-icon h-4 w-4" />,
+        label1: "Flight Agent",
+        label2: "A2A Server",
         handles: HANDLE_TYPES.TARGET,
-        farmName: FarmName?.BrazilCoffeeFarm || "Scout Agent",
+        // A2A agent - verified
         verificationStatus: VERIFICATION_STATUS.VERIFIED,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.brazilFarm}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}${urlsConfig.agentDirectory.agents.brazilFarm}`,
-      },
-
-      position: { x: 232.0903941835277, y: 503.93174725714437 },
-    },
-    {
-      id: NODE_IDS.COLOMBIA_FARM,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: <Brain className="dark-icon h-4 w-4 object-contain opacity-100" />,
-        label1: "Analyst",
-        label2: "Budget Filter Agent",
-        handles: HANDLE_TYPES.ALL,
-        farmName: FarmName?.ColombiaCoffeeFarm || "Analyst Agent",
-        verificationStatus: VERIFICATION_STATUS.VERIFIED,
-        hasBadgeDetails: true,
-        hasPolicyDetails: true,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.colombiaFarm}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}${urlsConfig.agentDirectory.agents.colombiaFarm}`,
-      },
-      position: { x: 521.266082170288, y: 505.38817113883306 },
-    },
-    {
-      id: NODE_IDS.VIETNAM_FARM,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: <FileText className="dark-icon h-4 w-4 object-contain opacity-100" />,
-        label1: "Planner",
-        label2: "Itinerary Agent",
-        handles: HANDLE_TYPES.TARGET,
-        farmName: FarmName?.VietnamCoffeeFarm || "Planner Agent",
-        verificationStatus: VERIFICATION_STATUS.VERIFIED,
-        hasBadgeDetails: true,
-        hasPolicyDetails: false,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.vietnamFarm}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}${urlsConfig.agentDirectory.agents.vietnamFarm}`,
-      },
-      position: { x: 832.9824511707582, y: 505.08339631990395 },
-    },
-    {
-      id: NODE_IDS.WEATHER_MCP,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: <TiWeatherCloudy className="dark-icon h-4 w-4" />,
-        label1: "MCP Server",
-        label2: "Weather",
-        handles: HANDLE_TYPES.TARGET,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.weatherMcp}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}${urlsConfig.agentDirectory.agents.weatherMcp}`,
-      },
-      position: { x: 371.266082170288, y: 731.9104402412228 },
-    },
-    {
-      id: NODE_IDS.PAYMENT_MCP,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: <Calculator className="dark-icon h-4 w-4" />,
-        label1: "MCP Server",
-        label2: "Payment",
-        handles: HANDLE_TYPES.TARGET,
-        verificationStatus: VERIFICATION_STATUS.VERIFIED,
-        hasBadgeDetails: true,
-        hasPolicyDetails: false,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.paymentMcp}`,
+        githubLink: `${urlsConfig.github.baseUrl}/agents/flight`,
         agentDirectoryLink: urlsConfig.agentDirectory.baseUrl,
       },
-      position: { x: 671.266082170288, y: 731.9104402412228 },
+      position: { x: 250, y: 480 },  // Left position for 3-agent layout
+    },
+    // Hotel Search Agent Node - A2A Server
+    {
+      id: NODE_IDS.COLOMBIA_FARM,  // Reusing ID for compatibility
+      type: NODE_TYPES.CUSTOM,
+      data: {
+        icon: <Hotel className="dark-icon h-4 w-4" />,
+        label1: "Hotel Agent",
+        label2: "A2A Server",
+        handles: HANDLE_TYPES.TARGET,
+        // A2A agent - verified
+        verificationStatus: VERIFICATION_STATUS.VERIFIED,
+        githubLink: `${urlsConfig.github.baseUrl}/agents/hotel`,
+        agentDirectoryLink: urlsConfig.agentDirectory.baseUrl,
+      },
+      position: { x: 450, y: 480 },
+    },
+    // Activity Search Agent Node - A2A Server
+    {
+      id: NODE_IDS.VIETNAM_FARM,  // Reusing ID for compatibility
+      type: NODE_TYPES.CUSTOM,
+      data: {
+        icon: <MapPin className="dark-icon h-4 w-4" />,
+        label1: "Activity Agent",
+        label2: "A2A Server",
+        handles: HANDLE_TYPES.TARGET,
+        // A2A agent - verified
+        verificationStatus: VERIFICATION_STATUS.VERIFIED,
+        githubLink: `${urlsConfig.github.baseUrl}/agents/activity`,
+        agentDirectoryLink: urlsConfig.agentDirectory.baseUrl,
+      },
+      position: { x: 650, y: 480 },
     },
   ],
   edges: [
+    // Supervisor to Transport
     {
       id: EDGE_IDS.AUCTION_TO_TRANSPORT,
       source: NODE_IDS.AUCTION_AGENT,
@@ -156,41 +138,35 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
       data: { label: EDGE_LABELS.A2A },
       type: EDGE_TYPES.CUSTOM,
     },
+    // Transport to Flight Agent (A2A)
     {
       id: EDGE_IDS.TRANSPORT_TO_BRAZIL,
       source: NODE_IDS.TRANSPORT,
       target: NODE_IDS.BRAZIL_FARM,
       sourceHandle: "bottom_left",
-      data: { label: EDGE_LABELS.A2A },
+      data: { label: EDGE_LABELS.A2A },  // A2A protocol over NATS
       type: EDGE_TYPES.CUSTOM,
     },
+    // Transport to Hotel Agent (A2A) - uses bottom_center handle for middle position
     {
       id: EDGE_IDS.TRANSPORT_TO_COLOMBIA,
       source: NODE_IDS.TRANSPORT,
       target: NODE_IDS.COLOMBIA_FARM,
       sourceHandle: "bottom_center",
-      data: { label: EDGE_LABELS.A2A },
+      data: { label: EDGE_LABELS.A2A },  // A2A protocol over NATS
       type: EDGE_TYPES.CUSTOM,
     },
+    // Transport to Activity Agent (A2A)
     {
       id: EDGE_IDS.TRANSPORT_TO_VIETNAM,
       source: NODE_IDS.TRANSPORT,
       target: NODE_IDS.VIETNAM_FARM,
       sourceHandle: "bottom_right",
-      data: { label: EDGE_LABELS.A2A },
+      data: { label: EDGE_LABELS.A2A },  // A2A protocol over NATS
       type: EDGE_TYPES.CUSTOM,
     },
-    {
-      id: EDGE_IDS.COLOMBIA_TO_MCP,
-      source: NODE_IDS.COLOMBIA_FARM,
-      target: NODE_IDS.WEATHER_MCP,
-      data: {
-        label: EDGE_LABELS.MCP,
-        branches: [NODE_IDS.WEATHER_MCP, NODE_IDS.PAYMENT_MCP],
-      },
-      type: EDGE_TYPES.BRANCHING,
-    },
   ],
+  // Animation sequence for the graph
   animationSequence: [
     { ids: [NODE_IDS.AUCTION_AGENT] },
     { ids: [EDGE_IDS.AUCTION_TO_TRANSPORT] },
@@ -209,240 +185,67 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
         NODE_IDS.VIETNAM_FARM,
       ],
     },
-    { ids: [EDGE_IDS.COLOMBIA_TO_MCP] },
-    { ids: [NODE_IDS.WEATHER_MCP, NODE_IDS.PAYMENT_MCP] },
   ],
 }
 
-const GROUP_COMMUNICATION_CONFIG: GraphConfig = {
-  title: "Trip Planner Agent Swarm",
-  nodes: [
-    {
-      id: NODE_IDS.LOGISTICS_GROUP,
-      type: NODE_TYPES.GROUP,
-      data: {
-        label: "Trip Planning Pipeline",
-      },
-      position: { x: 50, y: 50 },
-      style: {
-        width: 900,
-        height: 650,
-        backgroundColor: "var(--group-background)",
-        border: "none",
-        borderRadius: "8px",
-      },
-    },
-    {
-      id: NODE_IDS.AUCTION_AGENT,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: (
-          <img
-            src={supervisorIcon}
-            alt="Travel Coordinator Icon"
-            className="dark-icon h-4 w-4 object-contain"
-          />
-        ),
-        label1: "Traveler",
-        label2: "Trip Coordinator",
-        handles: HANDLE_TYPES.SOURCE,
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticSupervisor}`,
-        agentDirectoryLink: urlsConfig.agentDirectory.baseUrl,
-      },
-      position: { x: 150, y: 100 },
-      parentId: NODE_IDS.LOGISTICS_GROUP,
-      extent: "parent",
-    },
-    {
-      id: NODE_IDS.TRANSPORT,
-      type: NODE_TYPES.TRANSPORT,
-      data: {
-        label: "Transport: SLIM",
-        compact: true,
-        githubLink: `${urlsConfig.github.appSdkBaseUrl}${urlsConfig.github.transports.group}`,
-      },
-      position: { x: 380, y: 270 },
-      parentId: NODE_IDS.LOGISTICS_GROUP,
-      extent: "parent",
-    },
-    {
-      id: NODE_IDS.BRAZIL_FARM,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: (
-          <Search className="dark-icon h-4 w-4 object-contain opacity-100" />
-        ),
-        label1: "Scout",
-        label2: "Flight Search Agent",
-        handles: HANDLE_TYPES.ALL,
-        farmName: "Scout Agent",
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticFarm}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}/`,
-      },
-      position: { x: 550, y: 100 },
-      parentId: NODE_IDS.LOGISTICS_GROUP,
-      extent: "parent",
-    },
-    {
-      id: NODE_IDS.COLOMBIA_FARM,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: (
-          <Brain className="dark-icon h-4 w-4 object-contain opacity-100" />
-        ),
-        label1: "Analyst",
-        label2: "Budget Filter Agent",
-        handles: HANDLE_TYPES.TARGET,
-        agentName: "Analyst Agent",
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticShipper}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}/`,
-      },
-      position: { x: 150, y: 500 },
-      parentId: NODE_IDS.LOGISTICS_GROUP,
-      extent: "parent",
-    },
-    {
-      id: NODE_IDS.VIETNAM_FARM,
-      type: NODE_TYPES.CUSTOM,
-      data: {
-        icon: (
-          <FileText className="dark-icon h-4 w-4 object-contain opacity-100" />
-        ),
-        label1: "Planner",
-        label2: "Itinerary Agent",
-        handles: HANDLE_TYPES.TARGET,
-        agentName: "Planner Agent",
-        githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticAccountant}`,
-        agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}/`,
-      },
-      position: { x: 500, y: 500 },
-      parentId: NODE_IDS.LOGISTICS_GROUP,
-      extent: "parent",
-    },
-  ],
-  edges: [
-    {
-      id: EDGE_IDS.SUPERVISOR_TO_TRANSPORT,
-      source: NODE_IDS.AUCTION_AGENT,
-      target: NODE_IDS.TRANSPORT,
-      targetHandle: "top_left",
-      data: { label: EDGE_LABELS.A2A },
-      type: EDGE_TYPES.CUSTOM,
-    },
-    {
-      id: EDGE_IDS.FARM_TO_TRANSPORT,
-      source: NODE_IDS.BRAZIL_FARM,
-      target: NODE_IDS.TRANSPORT,
-      sourceHandle: "source",
-      targetHandle: "top_right",
-      data: { label: EDGE_LABELS.A2A },
-      type: EDGE_TYPES.CUSTOM,
-    },
-    {
-      id: EDGE_IDS.TRANSPORT_TO_SHIPPER,
-      source: NODE_IDS.TRANSPORT,
-      target: NODE_IDS.COLOMBIA_FARM,
-      sourceHandle: "bottom_left",
-      data: { label: EDGE_LABELS.A2A },
-      type: EDGE_TYPES.CUSTOM,
-    },
-    {
-      id: EDGE_IDS.TRANSPORT_TO_ACCOUNTANT,
-      source: NODE_IDS.TRANSPORT,
-      target: NODE_IDS.VIETNAM_FARM,
-      sourceHandle: "bottom_right",
-      data: { label: EDGE_LABELS.A2A },
-      type: EDGE_TYPES.CUSTOM,
-    },
-  ],
-  animationSequence: [
-    { ids: [NODE_IDS.AUCTION_AGENT] },
-    { ids: [EDGE_IDS.SUPERVISOR_TO_TRANSPORT] },
-    { ids: [NODE_IDS.TRANSPORT] },
-    {
-      ids: [
-        EDGE_IDS.FARM_TO_TRANSPORT,
-        EDGE_IDS.TRANSPORT_TO_SHIPPER,
-        EDGE_IDS.TRANSPORT_TO_ACCOUNTANT,
-        NODE_IDS.BRAZIL_FARM,
-        NODE_IDS.COLOMBIA_FARM,
-        NODE_IDS.VIETNAM_FARM,
-      ],
-    },
-    { ids: [NODE_IDS.BRAZIL_FARM] },
-    { ids: [NODE_IDS.COLOMBIA_FARM] },
-    { ids: [NODE_IDS.VIETNAM_FARM] },
-    { ids: [NODE_IDS.COLOMBIA_FARM] },
-  ],
-}
-
+/**
+ * Get the graph configuration for a given pattern
+ * 
+ * Travel agent patterns:
+ * - travel_search: Standard travel search
+ * - travel_search_streaming: Streaming travel search with real-time updates
+ */
 export const getGraphConfig = (
   pattern: string,
   _isConnected?: boolean,
 ): GraphConfig => {
   switch (pattern) {
-    case "publish_subscribe":
+    case "travel_search":
       return {
-        ...PUBLISH_SUBSCRIBE_CONFIG,
-        nodes: [...PUBLISH_SUBSCRIBE_CONFIG.nodes],
-        edges: [...PUBLISH_SUBSCRIBE_CONFIG.edges],
+        ...TRAVEL_SEARCH_CONFIG,
+        nodes: [...TRAVEL_SEARCH_CONFIG.nodes],
+        edges: [...TRAVEL_SEARCH_CONFIG.edges],
       }
-    case "publish_subscribe_streaming": {
+    case "travel_search_streaming": {
+      // Streaming config - same graph with streaming badge
       const streamingConfig = {
-        ...PUBLISH_SUBSCRIBE_CONFIG,
-        nodes: PUBLISH_SUBSCRIBE_CONFIG.nodes.map((node) => {
+        ...TRAVEL_SEARCH_CONFIG,
+        title: "Travel Planning Agent Network (Streaming)",
+        nodes: TRAVEL_SEARCH_CONFIG.nodes.map((node) => {
           if (node.id === NODE_IDS.AUCTION_AGENT) {
             return {
               ...node,
               data: {
                 ...node.data,
-                githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.supervisorAuctionStreaming}`,
-              },
-            }
-          } else if (node.id === NODE_IDS.BRAZIL_FARM) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.brazilFarmStreaming}`,
-              },
-            }
-          } else if (node.id === NODE_IDS.COLOMBIA_FARM) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.colombiaFarmStreaming}`,
-              },
-            }
-          } else if (node.id === NODE_IDS.VIETNAM_FARM) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.vietnamFarmStreaming}`,
+                label2: "Supervisor (Streaming)",
               },
             }
           }
           return node
         }),
-        edges: [...PUBLISH_SUBSCRIBE_CONFIG.edges],
+        edges: [...TRAVEL_SEARCH_CONFIG.edges],
       }
       return streamingConfig
     }
-    case "group_communication":
-      return GROUP_COMMUNICATION_CONFIG
     default:
-      return PUBLISH_SUBSCRIBE_CONFIG
+      // Default to travel search config
+      return TRAVEL_SEARCH_CONFIG
   }
 }
 
+/**
+ * Update transport labels in the graph based on current configuration
+ * 
+ * Fetches the transport type (NATS/SLIM) from the travel supervisor
+ * and updates the graph nodes and edges accordingly.
+ */
 export const updateTransportLabels = async (
   setNodes: (updater: (nodes: any[]) => any[]) => void,
   setEdges: (updater: (edges: any[]) => any[]) => void,
   pattern?: string,
   isStreaming?: boolean,
 ): Promise<void> => {
+  // Travel agent doesn't use group communication
   if (isGroupCommunication(pattern)) {
     return
   }
@@ -461,6 +264,7 @@ export const updateTransportLabels = async (
       ? urlsConfig.github.transports.streaming
       : urlsConfig.github.transports.regular
 
+    // Update transport node label
     setNodes((nodes: any[]) =>
       nodes.map((node: any) =>
         node.id === NODE_IDS.TRANSPORT
@@ -481,14 +285,10 @@ export const updateTransportLabels = async (
       ),
     )
 
+    // Update edge labels (if needed)
     setEdges((edges: any[]) =>
       edges.map((edge: any) => {
-        if (edge.id === EDGE_IDS.COLOMBIA_TO_MCP) {
-          return {
-            ...edge,
-            data: { ...edge.data, label: `${EDGE_LABELS.MCP}${transport}` },
-          }
-        }
+        // Travel agent edges use HTTP to SerpAPI, no MCP edges
         return edge
       }),
     )

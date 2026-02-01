@@ -1,76 +1,92 @@
 /**
  * Copyright AGNTCY Contributors (https://github.com/agntcy)
  * SPDX-License-Identifier: Apache-2.0
+ * 
+ * Pattern Utilities for Travel Agent
+ * 
+ * This module provides pattern-based configuration for the Travel Planning Agent.
+ * The travel agent uses HTTP communication between the supervisor and agents.
  **/
 
 export const PATTERNS = {
-  SLIM_A2A: "slim_a2a",
-  PUBLISH_SUBSCRIBE: "publish_subscribe",
-  PUBLISH_SUBSCRIBE_STREAMING: "publish_subscribe_streaming",
-  GROUP_COMMUNICATION: "group_communication",
+  // Travel agent patterns
+  TRAVEL_SEARCH: "travel_search",
+  TRAVEL_SEARCH_STREAMING: "travel_search_streaming",
+  
+  // Legacy patterns (mapped to travel search for compatibility)
+  GROUP_COMMUNICATION: "travel_search",
+  PUBLISH_SUBSCRIBE: "travel_search",
+  PUBLISH_SUBSCRIBE_STREAMING: "travel_search_streaming",
 } as const
 
 export type PatternType = (typeof PATTERNS)[keyof typeof PATTERNS]
 
+/**
+ * Check if the pattern requires group communication
+ * Travel agent doesn't use complex group communication
+ */
 export const isGroupCommunication = (pattern?: string): boolean => {
-  return pattern === PATTERNS.GROUP_COMMUNICATION
+  return false
 }
 
+/**
+ * Determine if retries should be enabled for a pattern
+ */
 export const shouldEnableRetries = (pattern?: string): boolean => {
-  return isGroupCommunication(pattern)
+  return false
 }
 
+/**
+ * Get the API URL for the travel supervisor
+ * The travel agent runs on port 8000 by default
+ */
 export const getApiUrlForPattern = (pattern?: string): string => {
-  const DEFAULT_PUB_SUB_API_URL = "http://127.0.0.1:8000"
-  const DEFAULT_GROUP_COMM_APP_API_URL = "http://127.0.0.1:9090"
+  const DEFAULT_TRAVEL_API_URL = "http://127.0.0.1:8000"
+  const TRAVEL_APP_API_URL =
+    import.meta.env.VITE_EXCHANGE_APP_API_URL || DEFAULT_TRAVEL_API_URL
 
-  const PUB_SUB_APP_API_URL =
-    import.meta.env.VITE_EXCHANGE_APP_API_URL || DEFAULT_PUB_SUB_API_URL
-  const GROUP_COMM_APP_API_URL =
-    import.meta.env.VITE_LOGISTICS_APP_API_URL || DEFAULT_GROUP_COMM_APP_API_URL
-
-  if (isGroupCommunication(pattern)) {
-    return GROUP_COMM_APP_API_URL
-  } else if (pattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING) {
-    return PUB_SUB_APP_API_URL
-  } else {
-    return PUB_SUB_APP_API_URL
-  }
+  // All travel patterns use the same API URL
+  return TRAVEL_APP_API_URL
 }
 
+/**
+ * Check if pattern supports Server-Sent Events
+ */
 export const supportsSSE = (pattern?: string): boolean => {
-  return isGroupCommunication(pattern)
+  return false
 }
 
+/**
+ * Get the streaming endpoint URL for a pattern
+ */
 export const getStreamingEndpointForPattern = (pattern?: string): string => {
-  if (pattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING) {
-    return `${getApiUrlForPattern(pattern)}/agent/prompt/stream`
-  }
-  throw new Error(`Pattern ${pattern} does not support streaming`)
+  return `${getApiUrlForPattern(pattern)}/agent/prompt/stream`
 }
 
+/**
+ * Check if a pattern uses streaming responses
+ */
 export const isStreamingPattern = (pattern?: string): boolean => {
-  return pattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING
+  return pattern === PATTERNS.TRAVEL_SEARCH_STREAMING
 }
 
+/**
+ * Check if pattern supports transport updates (NATS/SLIM display)
+ */
 export const supportsTransportUpdates = (pattern?: string): boolean => {
-  return (
-    pattern === PATTERNS.PUBLISH_SUBSCRIBE ||
-    pattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING
-  )
+  return true
 }
 
+/**
+ * Get a human-readable display name for a pattern
+ */
 export const getPatternDisplayName = (pattern?: string): string => {
   switch (pattern) {
-    case PATTERNS.SLIM_A2A:
-      return "Slim A2A"
-    case PATTERNS.PUBLISH_SUBSCRIBE:
-      return "Publish/Subscribe"
-    case PATTERNS.PUBLISH_SUBSCRIBE_STREAMING:
-      return "Publish/Subscribe: Streaming"
-    case PATTERNS.GROUP_COMMUNICATION:
-      return "Group Communication"
+    case PATTERNS.TRAVEL_SEARCH:
+      return "Travel Search"
+    case PATTERNS.TRAVEL_SEARCH_STREAMING:
+      return "Travel Search: Streaming"
     default:
-      return "Unknown Pattern"
+      return "Travel Agent"
   }
 }

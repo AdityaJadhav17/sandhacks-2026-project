@@ -1,0 +1,42 @@
+<svg width="200" height="45" viewBox="0 0 200 45" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Airplane Icon -->
+  <g transform="translate(5, 8)">
+    <!-- Airplane body -->
+    <path d="M28 15L8 12L2 15L8 18L28 15Z" fill="url(#planeGradient)" stroke="#60A5FA" stroke-width="1"/>
+    <!-- Wing -->
+    <path d="M12 15L18 8L22 15L18 22L12 15Z" fill="url(#wingGradient)" stroke="#3B82F6" stroke-width="0.5"/>
+    <!-- Tail -->
+    <path d="M6 12L2 8L4 15L2 22L6 18" fill="url(#tailGradient)" stroke="#60A5FA" stroke-width="0.5"/>
+    <!-- Engine trail -->
+    <path d="M28 15L35 14M28 15L35 16" stroke="url(#trailGradient)" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text: Travel -->
+  <text x="45" y="30" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="700" fill="url(#textGradient)">Travel</text>
+  
+  <!-- Text: AGNTCY -->
+  <text x="110" y="30" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="300" fill="#94A3B8">AGNTCY</text>
+  
+  <defs>
+    <linearGradient id="planeGradient" x1="2" y1="15" x2="28" y2="15" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="wingGradient" x1="12" y1="15" x2="22" y2="15" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="tailGradient" x1="2" y1="15" x2="6" y2="15" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1D4ED8"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="trailGradient" x1="28" y1="15" x2="35" y2="15" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
+    <linearGradient id="textGradient" x1="45" y1="20" x2="110" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
+</svg>

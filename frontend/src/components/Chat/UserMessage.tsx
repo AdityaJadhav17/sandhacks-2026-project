@@ -12,13 +12,13 @@ interface UserMessageProps {
 
 const UserMessage: React.FC<UserMessageProps> = ({ content }) => {
   return (
-    <div className="flex w-full flex-row items-start gap-1">
-      <div className="chat-avatar-container flex h-10 w-10 flex-none items-center justify-center rounded-full bg-action-background">
-        <User size={22} className="text-white" />
+    <div className="flex w-full flex-row items-start gap-3">
+      <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gray-600">
+        <User size={16} className="text-white" />
       </div>
 
-      <div className="flex flex-1 flex-col items-start justify-center rounded p-1 px-2">
-        <div className="whitespace-pre-wrap break-words font-inter text-sm font-normal leading-5 !text-chat-text">
+      <div className="flex flex-1 flex-col items-start justify-center rounded p-1">
+        <div className="whitespace-pre-wrap break-words font-inter text-sm font-normal leading-6 text-gray-100">
           {content}
         </div>
       </div>

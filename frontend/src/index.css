@@ -11,8 +11,8 @@
   body {
     margin: 0;
     padding: 0;
-    font-family: "Inter", sans-serif;
-    background-color: var(--app-background);
+    font-family: "Söhne", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: #212121;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -346,4 +346,146 @@
 .loading-dots::after {
   content: "";
   animation: dots 1.5s steps(4, end) infinite;
+}
+
+/* Fade in animation for dropdowns */
+@keyframes fadeInDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInDropdown {
+  animation: fadeInDropdown 0.2s ease-out forwards;
+}
+
+/* Custom scrollbar for sidebar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-slate-700::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+/* Glass morphism effect for cards */
+.glass-card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Pulse glow animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 10px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Smooth hover transitions for interactive elements */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* ChatGPT-inspired textarea styling */
+textarea {
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+textarea::placeholder {
+  color: #8e8e8e;
+}
+
+/* Smooth scrollbar for chat area */
+.chat-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 4px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a;
+}
+
+/* Animation for message appearance */
+@keyframes messageSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-appear {
+  animation: messageSlide 0.3s ease-out forwards;
+}
+
+/* Prompt card hover effect */
+.prompt-card {
+  transition: all 0.2s ease;
+}
+
+.prompt-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ChatGPT green accent color */
+.accent-green {
+  color: #10a37f;
+}
+
+.bg-accent-green {
+  background-color: #10a37f;
+}
+
+/* Focus ring for inputs */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.3);
 }

@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  **/
 
-import React, { useState } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Message } from "@/types/message"
-import airplaneSvg from "@/assets/airplane.svg"
-import TravelPromptsDropdown from "./Prompts/TravelPromptsDropdown"
+import { ArrowUp } from "lucide-react"
+import CoffeePromptsDropdown from "./Prompts/CoffeePromptsDropdown"
 import LogisticsPromptsDropdown from "./Prompts/LogisticsPromptsDropdown"
 import { useAgentAPI } from "@/hooks/useAgentAPI"
 import UserMessage from "./UserMessage"
 import ChatHeader from "./ChatHeader"
-import AgentIcon from "@/assets/Travel_Icon.svg"
+import TravelAgentIcon from "@/assets/Travel_Icon.svg"
 import { useGroupSessionId } from "@/stores/groupStreamingStore"
 
 import grafanaIcon from "@/assets/grafana.svg"
@@ -38,7 +38,7 @@ interface ChatAreaProps {
     setButtonClicked: (clicked: boolean) => void
     setAiReplied: (replied: boolean) => void
     isBottomLayout: boolean
-    showTravelPrompts?: boolean
+    showCoffeePrompts?: boolean
     showLogisticsPrompts?: boolean
     showProgressTracker?: boolean
     showAuctionStreaming?: boolean
@@ -58,7 +58,7 @@ interface ChatAreaProps {
     apiError: boolean
     chatRef?: React.RefObject<HTMLDivElement | null>
     auctionState?: any
-    grafanaUrl?: string // Add this prop if you want to pass the URL dynamically
+    grafanaUrl?: string
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -66,7 +66,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                                                setButtonClicked,
                                                setAiReplied,
                                                isBottomLayout,
-                                               showTravelPrompts = false,
+                                               showCoffeePrompts = false,
                                                showLogisticsPrompts = false,
                                                showProgressTracker = false,
                                                showAuctionStreaming = false,
@@ -92,7 +92,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     const [content, setContent] = useState<string>("")
     const [loading, setLoading] = useState<boolean>(false)
     const [isMinimized, setIsMinimized] = useState<boolean>(false)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
     const { sendMessageWithCallback } = useAgentAPI()
+
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'
+        }
+    }, [content])
 
     const handleMinimize = () => {
         setIsMinimized(true)
@@ -149,12 +158,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
 
     const processMessage = async (): Promise<void> => {
+        if (!content.trim()) return
+        
         if (isMinimized) {
             setIsMinimized(false)
         }
 
         if (onUserInput) {
-            onUserInput(content)
+            const messageContent = content
+            setContent("")
+            onUserInput(messageContent)
+            return
         }
 
         if ((showAuctionStreaming || showProgressTracker) && onDropdownSelect) {
@@ -165,14 +179,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         }
     }
 
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault()
             processMessage()
         }
     }
 
-    // Build the Grafana URL with session_id if available
     const groupSessionId = useGroupSessionId()
     const sessionIdForUrl = agentResponse?.session_id || groupSessionId
 
@@ -180,104 +193,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         ? `${grafanaUrl}${GRAFANA_DASHBOARD_PATH}${encodeURIComponent(sessionIdForUrl)}`
         : grafanaUrl
 
-
     if (!isBottomLayout) {
         return null
     }
 
+    const isDisabled = loading || isAgentLoading
+
     return (
         <div
             ref={chatRef}
-            className="relative flex w-full flex-col"
-            style={{ backgroundColor: "var(--overlay-background)" }}
+            className="relative flex w-full flex-col bg-[#212121]"
         >
-            {currentUserMessage && (
-                <ChatHeader
-                    onMinimize={isMinimized ? handleRestore : handleMinimize}
-                    onClearConversation={onClearConversation}
-                    isMinimized={isMinimized}
-                    showActions={!!agentResponse && !isAgentLoading}
-                />
-            )}
-
-            <div
-                className={cn(
-                    "flex w-full flex-col items-center justify-center gap-2 px-4 sm:px-8 md:px-16 lg:px-[120px]",
-                    currentUserMessage ? "min-h-auto py-2" : "min-h-[120px] py-4",
-                )}
-                style={{ minHeight: currentUserMessage ? "auto" : "120px" }}
-            >
-                {currentUserMessage && (
-                    <div className="mb-4 flex w-full max-w-[880px] flex-col gap-3">
-                        {!isMinimized && <UserMessage content={currentUserMessage} />}
-
-                        {showProgressTracker && (
-                            <div className={`w-full ${isMinimized ? "hidden" : ""}`}>
-                                <GroupCommunicationFeed
-                                    isVisible={!isMinimized && showProgressTracker}
-                                    onComplete={onStreamComplete}
-                                    onSenderHighlight={onSenderHighlight}
-                                    graphConfig={graphConfig}
-                                    prompt={currentUserMessage || ""}
-                                    executionKey={executionKey}
-                                    apiError={apiError}
-                                />
-                            </div>
-                        )}
-
-                        {showAuctionStreaming && (
-                            <div className={`w-full ${isMinimized ? "hidden" : ""}`}>
-                                <AuctionStreamingFeed
-                                    isVisible={!isMinimized && showAuctionStreaming}
-                                    prompt={currentUserMessage || ""}
-                                    apiError={apiError}
-                                    auctionStreamingState={auctionState}
-                                />
-                            </div>
-                        )}
-
-                        {showFinalResponse &&
-                            (isAgentLoading || agentResponse) &&
-                            !isMinimized && (
-                                <div className="flex w-full flex-row items-start gap-1">
-                                    <div className="chat-avatar-container flex h-10 w-10 flex-none items-center justify-center rounded-full bg-action-background">
-                                        <img
-                                            src={AgentIcon}
-                                            alt="Agent"
-                                            className="h-[22px] w-[22px]"
-                                        />
-                                    </div>
-                                    <div className="flex max-w-[calc(100%-3rem)] flex-1 flex-col items-start justify-center rounded p-1 px-2">
-                                        <div className="whitespace-pre-wrap break-words font-inter text-sm font-normal leading-5 !text-chat-text">
-                                            {isAgentLoading ? (
-                                                <div className="animate-pulse text-accent-primary">
-                                                    ...
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    {agentResponse?.response ?? ""}
-                                                    {(agentResponse?.session_id || groupSessionId || streamingSessionId) && !isAgentLoading && (
-                                                        <ExternalLinkButton
-                                                            url={grafanaSessionUrl}
-                                                            label="Grafana"
-                                                            iconSrc={grafanaIcon}
-                                                            // className="ml-2.5 align-baseline inline-block mt-3"
-                                                        />
-                                                    )}
-
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        }
-                    </div>
-                )}
-
-                {showTravelPrompts && (
-                    <div className="relative z-10 flex h-9 w-auto w-full max-w-[880px] flex-row items-start gap-2 p-0">
-                        <TravelPromptsDropdown
+            <div className="flex w-full flex-col items-center gap-3 px-4 py-4">
+                {showCoffeePrompts && (
+                    <div className="relative z-10 flex w-full max-w-[768px] justify-center">
+                        <CoffeePromptsDropdown
                             visible={true}
                             onSelect={handleDropdownQuery}
                             pattern={pattern}
@@ -285,42 +215,45 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     </div>
                 )}
 
-                {showLogisticsPrompts && (
-                    <div className="relative z-10 flex h-9 w-auto w-full max-w-[880px] flex-row items-start gap-2 p-0">
-                        <LogisticsPromptsDropdown
-                            visible={true}
-                            onSelect={handleDropdownQuery}
+                {/* ChatGPT-style input container */}
+                <div className="w-full max-w-[768px]">
+                    <div className="relative flex flex-col rounded-2xl border border-[#424242] bg-[#2f2f2f] shadow-lg transition-all focus-within:border-[#5a5a5a]">
+                        {/* Textarea */}
+                        <textarea
+                            ref={textareaRef}
+                            className="max-h-[200px] min-h-[52px] w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-[15px] leading-6 text-gray-100 outline-none placeholder:text-gray-500"
+                            placeholder="Message Travel AGNTCY..."
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={isDisabled}
+                            rows={1}
                         />
-                    </div>
-                )}
-
-                <div className="flex w-full max-w-[880px] flex-col items-stretch gap-4 p-0 sm:flex-row sm:items-center">
-                    <div className="box-border flex h-11 max-w-[814px] flex-1 flex-row items-center rounded border border-node-background bg-chat-input-background px-0 py-[5px]">
-                        <div className="flex h-[34px] w-full flex-row items-center gap-[10px] px-4 py-[7px]">
-                            <input
-                                className="h-5 min-w-0 flex-1 border-none bg-transparent font-cisco text-[15px] font-medium leading-5 tracking-[0.005em] text-chat-text outline-none placeholder:text-chat-text placeholder:opacity-60"
-                                placeholder="Type a prompt to interact with the agents"
-                                value={content}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                    setContent(e.target.value)
-                                }
-                                onKeyPress={handleKeyPress}
-                                disabled={loading}
-                            />
+                        
+                        {/* Send button */}
+                        <div className="absolute bottom-2.5 right-3">
+                            <button
+                                onClick={() => {
+                                    if (content.trim() && !isDisabled) {
+                                        processMessage()
+                                    }
+                                }}
+                                disabled={!content.trim() || isDisabled}
+                                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                                    content.trim() && !isDisabled
+                                        ? 'bg-white text-black hover:bg-gray-200'
+                                        : 'bg-[#424242] text-gray-500 cursor-not-allowed'
+                                }`}
+                            >
+                                <ArrowUp className="h-5 w-5" strokeWidth={2.5} />
+                            </button>
                         </div>
                     </div>
-                    <div className="flex h-11 w-[50px] flex-none flex-row items-start p-0">
-                        <button
-                            onClick={() => {
-                                if (content.trim() && !loading) {
-                                    processMessage()
-                                }
-                            }}
-                            className="flex h-11 w-[50px] cursor-pointer flex-row items-center justify-center gap-[10px] rounded-md border-none bg-gradient-to-r from-[#834DD7] via-[#7670D5] to-[#58C0D0] px-4 py-[15px]"
-                        >
-                            <img src={airplaneSvg} alt="Send" className="h-[18px] w-[18px]" />
-                        </button>
-                    </div>
+
+                    {/* Footer text */}
+                    <p className="mt-2 text-center text-xs text-gray-500">
+                        Travel AGNTCY can make mistakes. Consider verifying important information.
+                    </p>
                 </div>
             </div>
         </div>

@@ -19,16 +19,9 @@ export const EDGE_LABELS = {
 } as const
 
 export const FarmName = {
-  BrazilCoffeeFarm: "Scout Agent",
-  ColombiaCoffeeFarm: "Analyst Agent",
-  VietnamCoffeeFarm: "Planner Agent",
-} as const
-
-// Travel destination aliases for the trip planner
-export const TravelDestination = {
-  Scout: "Scout Agent",
-  Analyst: "Analyst Agent",
-  Planner: "Planner Agent",
+  BrazilCoffeeFarm: "Brazil Coffee Farm",
+  ColombiaCoffeeFarm: "Colombia Coffee Farm",
+  VietnamCoffeeFarm: "Vietnam Coffee Farm",
 } as const
 
 export const NODE_IDS = {

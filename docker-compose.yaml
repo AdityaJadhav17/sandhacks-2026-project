@@ -1,62 +1,137 @@
+# Travel Agent Docker Compose Configuration
+#
+# This compose file sets up the Travel Planning Agent environment with A2A communication.
+# 
+# Architecture:
+#   User → Travel Supervisor → A2A/NATS → Flight Agent → SerpAPI
+#                            → A2A/NATS → Hotel Agent → SerpAPI
+#                            → A2A/NATS → Activity Agent → SerpAPI
+#
+# Services:
+# - travel-supervisor: Main supervisor agent (port 8000)
+# - flight-agent: A2A agent for flight search (port 9001)
+# - hotel-agent: A2A agent for hotel search (port 9002)
+# - activity-agent: A2A agent for activity/attraction search (port 9003)
+# - nats: Message transport for A2A communication
+# - ui: Frontend web interface (port 3000)
+#
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose logs -f travel-supervisor  # View supervisor logs
+#   docker-compose down               # Stop all services
+
 services:
-  brazil-farm-server:
+  # =============================================================================
+  # Flight Search Agent (A2A Server)
+  # =============================================================================
+  # A2A agent that searches for flights using SerpAPI
+  flight-agent:
     build:
       context: .
-      dockerfile: docker/Dockerfile.brazil-farm
-    image: ghcr.io/agntcy/coffee-agntcy/brazil-farm:latest
-    container_name: brazil-farm-server
+      dockerfile: docker/Dockerfile.flight-agent
+    image: flight-agent:latest
+    container_name: flight-agent
     env_file:
       - .env
     environment:
-      - FARM_AGENT_HOST=brazil-farm-server
-      - FARM_AGENT_PORT=9999
       - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
       - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
       - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - IDENTITY_AUTH_ENABLED=disabled
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
+      - FLIGHT_AGENT_HOST=0.0.0.0
+      - FLIGHT_AGENT_PORT=9001
       - ENABLE_HTTP=true
     ports:
-      - "9999:9999"
-  colombia-farm-server:
+      - "9001:9001"
+    depends_on:
+      - nats
+
+  # =============================================================================
+  # Hotel Search Agent (A2A Server)
+  # =============================================================================
+  # A2A agent that searches for hotels using SerpAPI
+  hotel-agent:
     build:
       context: .
-      dockerfile: docker/Dockerfile.colombia-farm
-    image: ghcr.io/agntcy/coffee-agntcy/colombia-farm:latest
-    container_name: colombia-farm-server
+      dockerfile: docker/Dockerfile.hotel-agent
+    image: hotel-agent:latest
+    container_name: hotel-agent
     env_file:
       - .env
     environment:
-      - FARM_AGENT_HOST=colombia-farm-server
-      - FARM_AGENT_PORT=9998
       - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
       - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
       - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
+      - HOTEL_AGENT_HOST=0.0.0.0
+      - HOTEL_AGENT_PORT=9002
       - ENABLE_HTTP=true
-      - IDENTITY_AUTH_ENABLED=${IDENTITY_AUTH_ENABLED:-} # Disabled by default
-      - IDENTITY_SERVICE_API_KEY=${IDENTITY_SERVICE_API_KEY_COLOMBIA_FARM:-dummy_api_key}
-      - MCP_PAYMENT_SERVICE_URL=${MCP_PAYMENT_SERVICE_URL:-http://payment-mcp-server:8081/mcp}
     ports:
-      - "9998:9998"
-  vietnam-farm-server:
+      - "9002:9002"
+    depends_on:
+      - nats
+
+  # =============================================================================
+  # Activity Search Agent (A2A Server)
+  # =============================================================================
+  # A2A agent that searches for activities and attractions using SerpAPI
+  activity-agent:
     build:
       context: .
-      dockerfile: docker/Dockerfile.vietnam-farm
-    image: ghcr.io/agntcy/coffee-agntcy/vietnam-farm:latest
-    container_name: vietnam-farm-server
+      dockerfile: docker/Dockerfile.activity-agent
+    image: activity-agent:latest
+    container_name: activity-agent
     env_file:
       - .env
     environment:
-      - FARM_AGENT_HOST=vietnam-farm-server
-      - FARM_AGENT_PORT=9997
       - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
       - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
       - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
+      - ACTIVITY_AGENT_HOST=0.0.0.0
+      - ACTIVITY_AGENT_PORT=9003
       - ENABLE_HTTP=true
-      - IDENTITY_AUTH_ENABLED=${IDENTITY_AUTH_ENABLED:-} # Disabled by default
-      - IDENTITY_SERVICE_API_KEY=${IDENTITY_SERVICE_API_KEY_VIETNAM_FARM:-dummy_api_key}
-      - MCP_PAYMENT_SERVICE_URL=${MCP_PAYMENT_SERVICE_URL:-http://payment-mcp-server:8081/mcp}
     ports:
-      - "9997:9997"
+      - "9003:9003"
+    depends_on:
+      - nats
+
+  # =============================================================================
+  # Travel Supervisor Agent (A2A Client)
+  # =============================================================================
+  # Main travel planning agent that coordinates Flight, Hotel, and Activity agents via A2A
+  travel-supervisor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.travel-supervisor
+    image: travel-supervisor:latest
+    container_name: travel-supervisor
+    env_file:
+      - .env
+    environment:
+      # Transport settings (NATS for A2A communication)
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
+      # Observability
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
+      # Identity auth (disabled by default)
+      - IDENTITY_AUTH_ENABLED=${IDENTITY_AUTH_ENABLED:-false}
+      - IDENTITY_SERVICE_API_KEY=${IDENTITY_SERVICE_API_KEY_TRAVEL_SUPERVISOR:-dummy_api_key}
+      # SerpAPI (backup - agents have their own)
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
+      - TRAVEL_HOTEL_CHECKIN_GAP_HOURS=${TRAVEL_HOTEL_CHECKIN_GAP_HOURS:-2}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - nats
+      - flight-agent
+      - hotel-agent
+      - activity-agent
+
+  # =============================================================================
+  # Message Transport
+  # =============================================================================
+  # NATS server for agent communication
   nats:
     image: nats:latest
     container_name: lungo-nats
@@ -66,6 +141,7 @@ services:
       - "6222:6222"
       - "8222:8222"
 
+  # SLIM transport (alternative to NATS, required for group conversations)
   slim:
     image: ghcr.io/agntcy/slim:0.6.1
     container_name: lungo-slim
@@ -78,70 +154,29 @@ services:
       - ./config/docker/slim/server-config.yaml:/config.yaml
     command: ["/slim", "--config", "/config.yaml"]
 
-  # auction supervisor App (farm client)
-  auction-supervisor:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.auction-supervisor
-    image: ghcr.io/agntcy/coffee-agntcy/auction-supervisor:latest
-    container_name: auction-supervisor
-    volumes:
-      # Mount local git metadata so /build/info can derive latest tag/date in dev
-      - ./.git:/app/.git:ro
-    env_file:
-      - .env
-    environment:
-      - FARM_AGENT_HOST=farm-server
-      - FARM_AGENT_PORT=9999
-      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
-      - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - IDENTITY_AUTH_ENABLED=${IDENTITY_AUTH_ENABLED:-} # Disabled by default
-      - IDENTITY_SERVICE_API_KEY=${IDENTITY_SERVICE_API_KEY_AUCTION_SUPERVISOR:-dummy_api_key}
-    ports:
-      - "8000:8000"
-
+  # =============================================================================
+  # Frontend UI
+  # =============================================================================
+  # Web interface for interacting with the travel agent
   ui:
     build:
       context: .
       dockerfile: docker/Dockerfile.ui
-    image: ghcr.io/agntcy/coffee-agntcy/lungo-ui:latest
+    image: lungo-ui:latest
     container_name: lungo-ui
     environment:
+      # Travel supervisor API URL
       - VITE_EXCHANGE_APP_API_URL=http://127.0.0.1:8000
-      - VITE_LOGISTICS_APP_API_URL=http://127.0.0.1:9090
       - VITE_GRAFANA_URL=http://127.0.0.1:3001
     depends_on:
-      - auction-supervisor
+      - travel-supervisor
     ports:
       - "3000:3000"
 
-  weather-mcp-server:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.weather-mcp
-    image: ghcr.io/agntcy/coffee-agntcy/weather-mcp-server:latest
-    container_name: weather-mcp-server
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
-      - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-
-  payment-mcp-server:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.payment-mcp
-    image: ghcr.io/agntcy/coffee-agntcy/payment-mcp-server:latest
-    container_name: payment-mcp-server
-    ports:
-      - "8081:8081"
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
-      - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - IDENTITY_AUTH_ENABLED=${IDENTITY_AUTH_ENABLED:-} # Disabled by default
-      - IDENTITY_SERVICE_API_KEY=${IDENTITY_SERVICE_API_KEY_PAYMENT_MCP:-dummy_api_key}
-
+  # =============================================================================
+  # Observability Stack
+  # =============================================================================
+  # ClickHouse for storing traces and metrics
   clickhouse-server:
     image: clickhouse/clickhouse-server
     container_name: lungo-clickhouse-server
@@ -170,6 +205,7 @@ services:
       retries: 5
       start_period: 10s
 
+  # OpenTelemetry collector for trace aggregation
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: lungo-otel-collector
@@ -184,6 +220,7 @@ services:
       clickhouse-server:
         condition: service_healthy
 
+  # Grafana for visualization and dashboards
   grafana:
     image: grafana/grafana
     container_name: grafana-lungo
@@ -203,77 +240,10 @@ services:
       clickhouse-server:
         condition: service_healthy
 
-  logistics-shipper:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.logistics-shipper
-    image: ghcr.io/agntcy/coffee-agntcy/logistics-shipper:latest
-    container_name: logistics-shipper
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=SLIM # Do not change. SLIM is required for group conversation.
-      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - ENABLE_HTTP=true
-    ports:
-      - "9091:9091"
-
-  logistics-accountant:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.logistics-accountant
-    image: ghcr.io/agntcy/coffee-agntcy/logistics-accountant:latest
-    container_name: logistics-accountant
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=SLIM # Do not change. SLIM is required for group conversation.
-      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - ENABLE_HTTP=true
-    ports:
-      - "9092:9092"
-
-  logistics-farm:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.logistics-farm
-    image: ghcr.io/agntcy/coffee-agntcy/logistics-farm:latest
-    container_name: logistics-farm
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=SLIM # Do not change. SLIM is required for group conversation.
-      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - ENABLE_HTTP=true
-    ports:
-      - "9093:9093"
-
-  logistics-helpdesk:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.logistics-helpdesk
-    image: ghcr.io/agntcy/coffee-agntcy/logistics-helpdesk:latest
-    container_name: logistics-helpdesk
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=SLIM # Do not change. SLIM is required for group conversation.
-      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-      - ENABLE_HTTP=true
-    ports:
-      - "9094:9094"
-
-  logistics-supervisor:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.logistics-supervisor
-    image: ghcr.io/agntcy/coffee-agntcy/logistics-supervisor:latest
-    container_name: logistics-supervisor
-    env_file:
-      - .env
-    environment:
-      - DEFAULT_MESSAGE_TRANSPORT=SLIM # Do not change. SLIM is required for group conversation.
-      - TRANSPORT_SERVER_ENDPOINT=http://slim:46357
-      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
-    ports:
-      - "9090:9090"
-
+  # =============================================================================
+  # Metrics and Analytics
+  # =============================================================================
+  # MCE API layer for observability data
   mce-api-layer:
     image: ghcr.io/agntcy/obs-api:0.1.1
     container_name: lungo-mce-api-layer
@@ -299,6 +269,7 @@ services:
       retries: 3
       start_period: 30s
 
+  # Metrics Computation Engine for advanced analytics
   metrics-computation-engine:
     image: ghcr.io/agntcy/mce:1.2.1
     container_name: lungo-metrics-computation-engine
@@ -313,6 +284,10 @@ services:
       mce-api-layer:
         condition: service_healthy
 
+  # =============================================================================
+  # Agent Directory Services
+  # =============================================================================
+  # Directory API server for agent registry
   dir-api-server:
     image: ghcr.io/agntcy/dir-apiserver:v0.6.0
     container_name: dir-api-server
@@ -334,20 +309,23 @@ services:
       retries: 60
       start_period: 10s
 
+  # Directory MCP server
   dir-mcp-server:
     image: ghcr.io/agntcy/dir-ctl:latest
     container_name: dir-mcp-server
     stdin_open: true
-    tty: false
+    tty: true
     command: ["mcp", "serve"]
     environment:
       - DIRECTORY_CLIENT_SERVER_ADDRESS=dir-api-server:8888
       - DIRECTORY_CLIENT_TLS_SKIP_VERIFY=true
       - OASF_API_VALIDATION_DISABLE=true
-      - OASF_API_VALIDATION_SCHEMA_URL=https://schema.oasf.agntcy.org
     depends_on:
-      - dir-api-server
+      dir-api-server:
+        condition: service_healthy
+    restart: unless-stopped
 
+  # Zot OCI registry for agent artifacts
   zot:
     image: ghcr.io/project-zot/zot:v2.1.10
     container_name: zot
@@ -364,6 +342,7 @@ services:
       retries: 60
       start_period: 15s
 
+  # OASF translation service (optional)
   oasf-translation-service:
     image: ghcr.io/agntcy/oasf-sdk:v0.0.14
     container_name: oasf-translation-service

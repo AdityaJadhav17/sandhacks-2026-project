@@ -1,0 +1,36 @@
+# Travel Supervisor Dockerfile
+# 
+# Main travel planning agent that coordinates Flight and Hotel agents via A2A.
+# Based on the original lungo auction-supervisor Dockerfile pattern.
+
+FROM python:3.13.0-slim
+
+# Install system dependencies, including curl, ping, and wget
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git curl wget iputils-ping && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv and create virtual environment
+RUN pip install --no-cache-dir uv && \
+    uv venv -q /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Set PYTHONPATH to include the application directory
+ENV PYTHONPATH="/app"
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-editable
+
+COPY . .
+
+# Generate about.properties file with build metadata
+RUN echo "app.name=travel-supervisor" > about.properties && \
+    echo "app.service=travel-supervisor" >> about.properties && \
+    echo "build.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> about.properties && \
+    echo "git.commit=local" >> about.properties && \
+    echo "git.tag=dev" >> about.properties
+
+# Run the travel supervisor server (same pattern as original)
+CMD ["uv", "run", "python", "agents/supervisors/travel/main.py"]

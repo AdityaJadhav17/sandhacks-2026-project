@@ -1,26 +1,17 @@
 /**
  * Copyright AGNTCY Contributors (https://github.com/agntcy)
  * SPDX-License-Identifier: Apache-2.0
+ * 
+ * Travel Planning Agent Frontend Application
+ * 
+ * This is the main React application that provides a UI for interacting with
+ * the Travel Planning Agent. It supports searching for flights and hotels.
  **/
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { LOCAL_STORAGE_KEY } from "@/components/Chat/Messages"
 import { logger } from "@/utils/logger"
 import { useChatAreaMeasurement } from "@/hooks/useChatAreaMeasurement"
-import {
-  useStreamingStatus,
-  useStreamingEvents,
-  useStreamingError,
-  useStreamingActions,
-} from "@/stores/auctionStreamingStore"
-import {
-  useGroupIsStreaming,
-  useGroupIsComplete,
-  useGroupFinalResponse,
-  useGroupError,
-  useStartGroupStreaming,
-  useGroupStreamingActions,
-} from "@/stores/groupStreamingStore"
 import Navigation from "@/components/Navigation/Navigation"
 import MainArea from "@/components/MainArea/MainArea"
 import { useAgentAPI } from "@/hooks/useAgentAPI"
@@ -30,63 +21,93 @@ import { ThemeProvider } from "@/contexts/ThemeContext"
 import { Message } from "./types/message"
 import { getGraphConfig } from "@/utils/graphConfigs"
 import { PATTERNS, PatternType } from "@/utils/patternUtils"
-import { parseApiError } from "@/utils/const.ts"
+import TravelResponseCard from "@/components/Chat/TravelResponseCard"
+import { Plane } from "lucide-react"
 
 interface ApiResponse {
   response: string
   session_id?: string
 }
 
+export interface ChatHistoryItem {
+  id: string
+  title: string
+  timestamp: Date
+  messages: Array<{
+    role: 'user' | 'assistant'
+    content: string
+  }>
+}
+
+const CHAT_HISTORY_KEY = "travel_chat_history"
+
 const App: React.FC = () => {
   const { sendMessage } = useAgentAPI()
 
   const [selectedPattern, setSelectedPattern] = useState<PatternType>(
-      PATTERNS.GROUP_COMMUNICATION,
+    PATTERNS.TRAVEL_SEARCH,
   )
 
-  const startStreaming = useStartGroupStreaming()
-  const { connect, reset } = useStreamingActions()
-  const status = useStreamingStatus()
-  const events = useStreamingEvents()
-  const error = useStreamingError()
-
-  const groupIsStreaming = useGroupIsStreaming()
-  const groupIsComplete = useGroupIsComplete()
-  const groupFinalResponse = useGroupFinalResponse()
-  const groupError = useGroupError()
-  const { reset: resetGroup } = useGroupStreamingActions()
   const [aiReplied, setAiReplied] = useState<boolean>(false)
   const [buttonClicked, setButtonClicked] = useState<boolean>(false)
   const [currentUserMessage, setCurrentUserMessage] = useState<string>("")
   const [agentResponse, setAgentResponse] = useState<ApiResponse | undefined>(undefined)
   const [isAgentLoading, setIsAgentLoading] = useState<boolean>(false)
   const [apiError, setApiError] = useState<boolean>(false)
-  const [groupCommResponseReceived, setGroupCommResponseReceived] = useState(false)
-  const [highlightNodeFunction, setHighlightNodeFunction] = useState<((nodeId: string) => void) | null>(null)
-  const [showProgressTracker, setShowProgressTracker] = useState<boolean>(false)
-  const [showAuctionStreaming, setShowAuctionStreaming] = useState<boolean>(false)
   const [showFinalResponse, setShowFinalResponse] = useState<boolean>(false)
-  const [pendingResponse, setPendingResponse] = useState<string>("")
-  const [executionKey, setExecutionKey] = useState<string>("")
-  const streamCompleteRef = useRef<boolean>(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
+  
+  // Chat history state
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([])
+  const [conversationMessages, setConversationMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
+
+  // Ref for scrolling to bottom
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [conversationMessages, isAgentLoading])
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY)
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory)
+        setChatHistory(parsed.map((h: any) => ({
+          ...h,
+          timestamp: new Date(h.timestamp)
+        })))
+      } catch (e) {
+        console.error("Error loading chat history:", e)
+      }
+    }
+  }, [])
+
+  // Save chat history to localStorage whenever it changes
+  useEffect(() => {
+    if (chatHistory.length > 0) {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory))
+    }
+  }, [chatHistory])
 
   const handlePatternChange = useCallback(
-      (pattern: PatternType) => {
-        reset()
-        setShowAuctionStreaming(false)
-        resetGroup()
-        setGroupCommResponseReceived(false)
-        setShowFinalResponse(false)
-        setAgentResponse(undefined)
-        setPendingResponse("")
-        setIsAgentLoading(false)
-        setApiError(false)
-        setCurrentUserMessage("")
-        setButtonClicked(false)
-        setAiReplied(false)
-        setSelectedPattern(pattern)
-      },
-      [reset, resetGroup],
+    (pattern: PatternType) => {
+      setShowFinalResponse(false)
+      setAgentResponse(undefined)
+      setIsAgentLoading(false)
+      setApiError(false)
+      setCurrentUserMessage("")
+      setButtonClicked(false)
+      setAiReplied(false)
+      setSelectedPattern(pattern)
+    },
+    [],
   )
 
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -97,19 +118,6 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(messages))
   }, [messages])
-
-  useEffect(() => {
-    if (selectedPattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING) {
-      if (
-          events.length > 0 &&
-          status !== "connecting" &&
-          status !== "streaming" &&
-          isAgentLoading
-      ) {
-        setIsAgentLoading(false)
-      }
-    }
-  }, [selectedPattern, events.length, status, isAgentLoading])
 
   useEffect(() => {
     setButtonClicked(false)
@@ -126,128 +134,88 @@ const App: React.FC = () => {
 
   const chatHeightValue = currentUserMessage || agentResponse ? chatHeight : 76
 
-  const handleUserInput = (query: string) => {
+  const handleUserInput = async (query: string) => {
     setCurrentUserMessage(query)
     setIsAgentLoading(true)
     setButtonClicked(true)
+    setAiReplied(false)
     setApiError(false)
-    if (
-        selectedPattern !== PATTERNS.GROUP_COMMUNICATION &&
-        selectedPattern !== PATTERNS.PUBLISH_SUBSCRIBE_STREAMING
-    ) {
-      setShowFinalResponse(true)
+    setShowFinalResponse(true)
+
+    const userMessage = { role: 'user' as const, content: query }
+    const newMessages = [...conversationMessages, userMessage]
+    setConversationMessages(newMessages)
+
+    try {
+      const response = await sendMessage(query, selectedPattern)
+      handleApiResponse(response, false, query, newMessages)
+    } catch (error) {
+      logger.apiError("/agent/prompt", error)
+      const errMessage = error instanceof Error ? error.message : String(error)
+      handleApiResponse(errMessage, true, query, newMessages)
     }
   }
 
-  // Accepts ApiResponse or string (for error fallback), but always sets ApiResponse
   const handleApiResponse = useCallback(
-      (response: ApiResponse | string, isError: boolean = false) => {
-        let apiResp: ApiResponse
-        if (typeof response === "string") {
-          apiResp = { response }
+    (response: ApiResponse | string, isError: boolean = false, userQuery?: string, currentMessages?: Array<{role: 'user' | 'assistant', content: string}>) => {
+      let apiResp: ApiResponse
+      if (typeof response === "string") {
+        apiResp = { response }
+      } else {
+        apiResp = response
+      }
+      setAgentResponse(apiResp)
+      setIsAgentLoading(false)
+      setAiReplied(true)
+      setApiError(isError)
+
+      const assistantMessage = { role: 'assistant' as const, content: apiResp.response }
+      const messagesToUse = currentMessages || conversationMessages
+      const updatedMessages = [...messagesToUse, assistantMessage]
+      setConversationMessages(updatedMessages)
+
+      const queryToUse = userQuery || currentUserMessage
+      if (queryToUse) {
+        if (currentChatId) {
+          setChatHistory(prev => prev.map(chat => 
+            chat.id === currentChatId 
+              ? { ...chat, messages: updatedMessages, timestamp: new Date() }
+              : chat
+          ))
         } else {
-          apiResp = response
-        }
-        setAgentResponse(apiResp)
-        setIsAgentLoading(false)
-
-        if (selectedPattern === PATTERNS.GROUP_COMMUNICATION) {
-          setApiError(isError)
-          if (!isError) {
-            setGroupCommResponseReceived(true)
+          const title = queryToUse.length > 35 
+            ? queryToUse.substring(0, 35) + "..." 
+            : queryToUse
+          
+          const newChat: ChatHistoryItem = {
+            id: `chat_${Date.now()}`,
+            title: title,
+            timestamp: new Date(),
+            messages: updatedMessages
           }
+          
+          setChatHistory(prev => [newChat, ...prev].slice(0, 15))
+          setCurrentChatId(newChat.id)
         }
+      }
 
-        setMessages((prev) => {
-          const updated = [...prev]
+      setMessages((prev) => {
+        const updated = [...prev]
+        if (updated.length > 0) {
           updated[updated.length - 1] = {
             ...updated[updated.length - 1],
             content: apiResp.response,
             animate: !isError,
           }
-          return updated
-        })
-      },
-      [selectedPattern, setMessages],
+        }
+        return updated
+      })
+    },
+    [setMessages, currentChatId, conversationMessages, currentUserMessage],
   )
 
-  useEffect(() => {
-    if (selectedPattern === PATTERNS.GROUP_COMMUNICATION) {
-      if (groupIsComplete && !groupIsStreaming) {
-        if (groupFinalResponse) {
-          setShowFinalResponse(true)
-          handleApiResponse(groupFinalResponse, false)
-        } else if (groupError) {
-          const errorMsg = `Streaming error: ${groupError}`
-          setShowFinalResponse(true)
-          handleApiResponse(errorMsg, true)
-        }
-      }
-    }
-  }, [
-    selectedPattern,
-    groupIsComplete,
-    groupIsStreaming,
-    groupFinalResponse,
-    groupError,
-    handleApiResponse,
-  ])
-
   const handleDropdownSelect = async (query: string) => {
-    setCurrentUserMessage(query)
-    setIsAgentLoading(true)
-    setButtonClicked(true)
-    setApiError(false)
-
-    try {
-      if (selectedPattern === PATTERNS.GROUP_COMMUNICATION) {
-        const newExecutionKey = Date.now().toString()
-        setExecutionKey(newExecutionKey)
-        setShowFinalResponse(false)
-        setAgentResponse(undefined)
-        setPendingResponse("")
-        setGroupCommResponseReceived(false)
-        streamCompleteRef.current = false
-        resetGroup()
-        try {
-          await startStreaming(query)
-        } catch (error) {
-          logger.apiError("/agent/prompt/stream", error)
-          const errorMsg = "Sorry, I encountered an error with streaming."
-          setShowFinalResponse(true)
-          handleApiResponse(errorMsg, true)
-        }
-      } else if (selectedPattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING) {
-        setShowFinalResponse(false)
-        setShowAuctionStreaming(true)
-        setAgentResponse(undefined)
-        reset()
-        await connect(query)
-      } else {
-        setShowFinalResponse(true)
-        const response = await sendMessage(query, selectedPattern)
-        handleApiResponse(response, false)
-      }
-    } catch (error) {
-      logger.apiError("/agent/prompt", error)
-      const errMessage = error instanceof Error ? error.message : String(error)
-      handleApiResponse(errMessage, true)
-      setShowProgressTracker(false)
-    }
-  }
-
-  const handleStreamComplete = () => {
-    streamCompleteRef.current = true
-    if (selectedPattern === PATTERNS.GROUP_COMMUNICATION) {
-      setShowFinalResponse(true)
-      setIsAgentLoading(true)
-      if (pendingResponse) {
-        const isError =
-            pendingResponse.includes("error") || pendingResponse.includes("Error")
-        handleApiResponse(pendingResponse, isError)
-        setPendingResponse("")
-      }
-    }
+    handleUserInput(query)
   }
 
   const handleClearConversation = () => {
@@ -257,27 +225,10 @@ const App: React.FC = () => {
     setIsAgentLoading(false)
     setButtonClicked(false)
     setAiReplied(false)
-    setGroupCommResponseReceived(false)
     setShowFinalResponse(false)
-    setPendingResponse("")
-    resetGroup()
+    setCurrentChatId(null)
+    setConversationMessages([])
   }
-
-  const handleNodeHighlightSetup = useCallback(
-      (highlightFunction: (nodeId: string) => void) => {
-        setHighlightNodeFunction(() => highlightFunction)
-      },
-      [],
-  )
-
-  const handleSenderHighlight = useCallback(
-      (nodeId: string) => {
-        if (highlightNodeFunction) {
-          highlightNodeFunction(nodeId)
-        }
-      },
-      [highlightNodeFunction],
-  )
 
   useEffect(() => {
     setCurrentUserMessage("")
@@ -286,29 +237,105 @@ const App: React.FC = () => {
     setButtonClicked(false)
     setAiReplied(false)
     setShowFinalResponse(false)
-    setPendingResponse("")
-    if (selectedPattern === PATTERNS.GROUP_COMMUNICATION) {
-      setShowProgressTracker(true)
-      resetGroup()
-    } else {
-      setShowProgressTracker(false)
-      setShowAuctionStreaming(false)
-      setGroupCommResponseReceived(false)
+  }, [selectedPattern])
+
+  const handleNewChat = () => {
+    handleClearConversation()
+  }
+
+  const handleSelectChat = (chatId: string) => {
+    const selectedChat = chatHistory.find(chat => chat.id === chatId)
+    if (selectedChat && selectedChat.messages.length > 0) {
+      setCurrentChatId(chatId)
+      setConversationMessages(selectedChat.messages)
+      
+      const lastUserMsg = [...selectedChat.messages].reverse().find(m => m.role === 'user')
+      const lastAssistantMsg = [...selectedChat.messages].reverse().find(m => m.role === 'assistant')
+      
+      if (lastUserMsg) {
+        setCurrentUserMessage(lastUserMsg.content)
+      }
+      if (lastAssistantMsg) {
+        setAgentResponse({ response: lastAssistantMsg.content })
+        setShowFinalResponse(true)
+      }
+      setButtonClicked(false)
+      setAiReplied(true)
     }
-  }, [selectedPattern, resetGroup])
+  }
+
+  const handleDeleteChat = (chatId: string) => {
+    setChatHistory(prev => prev.filter(chat => chat.id !== chatId))
+    if (currentChatId === chatId) {
+      handleClearConversation()
+    }
+  }
+
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen)
+  }
+
+  // Show welcome section only when it's a fresh new chat (no messages)
+  const showWelcome = conversationMessages.length === 0
 
   return (
-      <ThemeProvider>
-        <div className="bg-primary-bg flex h-screen w-screen flex-col overflow-hidden">
-          <Navigation />
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar
-                selectedPattern={selectedPattern}
-                onPatternChange={handlePatternChange}
-            />
-            <div className="flex flex-1 flex-col border-l border-action-background bg-app-background">
-              <div className="relative flex-grow">
-                <MainArea
+    <ThemeProvider>
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#212121]">
+        <Navigation onToggleSidebar={handleToggleSidebar} isSidebarOpen={isSidebarOpen} />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            selectedPattern={selectedPattern}
+            onPatternChange={handlePatternChange}
+            onNewChat={handleNewChat}
+            onSelectChat={handleSelectChat}
+            onDeleteChat={handleDeleteChat}
+            chatHistory={chatHistory}
+            currentChatId={currentChatId}
+            isOpen={isSidebarOpen}
+          />
+          <div className={`flex flex-1 flex-col bg-[#212121] ${isSidebarOpen ? 'border-l border-gray-800' : ''}`}>
+            {/* Main content area - scrollable */}
+            <div className="relative flex-1 overflow-y-auto">
+              {/* New Chat Welcome View - Graph + Welcome Section */}
+              {showWelcome && (
+                <div className="flex h-full flex-col">
+                  {/* Agent Graph - takes up available space above welcome */}
+                  <div className="flex-1 min-h-[300px]">
+                    <MainArea
+                      pattern={selectedPattern}
+                      buttonClicked={buttonClicked}
+                      setButtonClicked={setButtonClicked}
+                      aiReplied={aiReplied}
+                      setAiReplied={setAiReplied}
+                      chatHeight={chatHeightValue}
+                      isExpanded={isExpanded}
+                      groupCommResponseReceived={false}
+                      onNodeHighlight={() => {}}
+                    />
+                  </div>
+                  
+                  {/* Welcome Section */}
+                  <div className="flex flex-col items-center justify-center px-4 pb-4">
+                    {/* Airplane Icon - same orientation as logo */}
+                    <div className="mb-4">
+                      <Plane className="h-12 w-12 text-[#3ce98a]" strokeWidth={2} />
+                    </div>
+                    
+                    {/* Welcome Text */}
+                    <h1 className="mb-2 text-2xl font-semibold text-white">
+                      How can I help you plan your trip?
+                    </h1>
+                    <p className="text-gray-400">
+                      Find flights, hotels, and activities for your next adventure
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Loading State with Graph - when messages exist but loading */}
+              {!showWelcome && isAgentLoading && (
+                <div className="h-[350px]">
+                  <MainArea
                     pattern={selectedPattern}
                     buttonClicked={buttonClicked}
                     setButtonClicked={setButtonClicked}
@@ -316,54 +343,94 @@ const App: React.FC = () => {
                     setAiReplied={setAiReplied}
                     chatHeight={chatHeightValue}
                     isExpanded={isExpanded}
-                    groupCommResponseReceived={groupCommResponseReceived}
-                    onNodeHighlight={handleNodeHighlightSetup}
-                />
-              </div>
-              <div className="flex min-h-[76px] w-full flex-none flex-col items-center justify-center gap-0 bg-overlay-background p-0 md:min-h-[96px]">
-                <ChatArea
-                    setMessages={setMessages}
-                    setButtonClicked={setButtonClicked}
-                    setAiReplied={setAiReplied}
-                    isBottomLayout={true}
-                    showTravelPrompts={
-                        selectedPattern === PATTERNS.PUBLISH_SUBSCRIBE ||
-                        selectedPattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING
-                    }
-                    showLogisticsPrompts={
-                        selectedPattern === PATTERNS.GROUP_COMMUNICATION
-                    }
-                    showProgressTracker={showProgressTracker}
-                    showAuctionStreaming={showAuctionStreaming}
-                    showFinalResponse={showFinalResponse}
-                    onStreamComplete={handleStreamComplete}
-                    onSenderHighlight={handleSenderHighlight}
-                    pattern={selectedPattern}
-                    graphConfig={getGraphConfig(
-                        selectedPattern,
-                        groupCommResponseReceived,
-                    )}
-                    onDropdownSelect={handleDropdownSelect}
-                    onUserInput={handleUserInput}
-                    onApiResponse={handleApiResponse}
-                    onClearConversation={handleClearConversation}
-                    currentUserMessage={currentUserMessage}
-                    agentResponse={agentResponse}
-                    executionKey={executionKey}
-                    isAgentLoading={isAgentLoading}
-                    apiError={apiError}
-                    chatRef={chatRef}
-                    auctionState={{
-                      events,
-                      status,
-                      error,
-                    }}
-                />
-              </div>
+                    groupCommResponseReceived={false}
+                    onNodeHighlight={() => {}}
+                  />
+                </div>
+              )}
+
+              {/* Conversation Messages - ChatGPT style */}
+              {conversationMessages.length > 0 && (
+                <div className="mx-auto w-full max-w-[768px] px-4 py-6">
+                  {conversationMessages.map((msg, index) => (
+                    <div key={index} className="mb-6">
+                      {msg.role === 'user' ? (
+                        /* User Message - right aligned bubble */
+                        <div className="flex justify-end">
+                          <div className="max-w-[85%] rounded-3xl bg-[#2f2f2f] px-5 py-3 text-[15px] text-gray-100">
+                            {msg.content}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Assistant Message - left aligned with avatar */
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{background: 'linear-gradient(135deg, #3ce98a, #5feb9b)'}}>
+                            <Plane className="h-4 w-4 text-white" />
+                          </div>
+                          <div className="flex-1 pt-1 text-[15px]">
+                            <TravelResponseCard content={msg.content} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Loading indicator */}
+                  {isAgentLoading && (
+                    <div className="mb-6 flex items-start gap-4">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{background: 'linear-gradient(135deg, #3ce98a, #5feb9b)'}}>
+                        <Plane className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex items-center gap-1 pt-3">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-[#3ce98a] [animation-delay:-0.3s]" />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-[#5feb9b] [animation-delay:-0.15s]" />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-[#7becac]" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+            
+            {/* Input area - fixed at bottom */}
+            <div className="flex w-full flex-none flex-col items-center justify-end gap-0 bg-[#212121] px-4 pb-6 pt-2">
+              <ChatArea
+                setMessages={setMessages}
+                setButtonClicked={setButtonClicked}
+                setAiReplied={setAiReplied}
+                isBottomLayout={true}
+                showCoffeePrompts={false}
+                showLogisticsPrompts={false}
+                showProgressTracker={false}
+                showAuctionStreaming={false}
+                showFinalResponse={showFinalResponse}
+                onStreamComplete={() => {}}
+                onSenderHighlight={() => {}}
+                pattern={selectedPattern}
+                graphConfig={getGraphConfig(selectedPattern, false)}
+                onDropdownSelect={handleDropdownSelect}
+                onUserInput={handleUserInput}
+                onApiResponse={handleApiResponse}
+                onClearConversation={handleClearConversation}
+                currentUserMessage={currentUserMessage}
+                agentResponse={agentResponse}
+                executionKey=""
+                isAgentLoading={isAgentLoading}
+                apiError={apiError}
+                chatRef={chatRef}
+                auctionState={{
+                  events: [],
+                  status: "idle",
+                  error: null,
+                }}
+              />
             </div>
           </div>
         </div>
-      </ThemeProvider>
+      </div>
+    </ThemeProvider>
   )
 }
 
