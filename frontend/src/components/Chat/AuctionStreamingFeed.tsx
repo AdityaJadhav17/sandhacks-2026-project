@@ -5,7 +5,7 @@
 
 import React, { useEffect } from "react"
 import { Loader2 } from "lucide-react"
-import AgentIcon from "@/assets/Coffee_Icon.svg"
+import AgentIcon from "@/assets/Travel_Icon.svg"
 import CheckCircle from "@/assets/Check_Circle.png"
 import { AuctionStreamingFeedProps } from "@/types/streaming"
 

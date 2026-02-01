@@ -6,12 +6,12 @@
 import React, { useState } from "react"
 import { Message } from "@/types/message"
 import airplaneSvg from "@/assets/airplane.svg"
-import CoffeePromptsDropdown from "./Prompts/CoffeePromptsDropdown"
+import TravelPromptsDropdown from "./Prompts/TravelPromptsDropdown"
 import LogisticsPromptsDropdown from "./Prompts/LogisticsPromptsDropdown"
 import { useAgentAPI } from "@/hooks/useAgentAPI"
 import UserMessage from "./UserMessage"
 import ChatHeader from "./ChatHeader"
-import AgentIcon from "@/assets/Coffee_Icon.svg"
+import AgentIcon from "@/assets/Travel_Icon.svg"
 import { useGroupSessionId } from "@/stores/groupStreamingStore"
 
 import grafanaIcon from "@/assets/grafana.svg"
@@ -38,7 +38,7 @@ interface ChatAreaProps {
     setButtonClicked: (clicked: boolean) => void
     setAiReplied: (replied: boolean) => void
     isBottomLayout: boolean
-    showCoffeePrompts?: boolean
+    showTravelPrompts?: boolean
     showLogisticsPrompts?: boolean
     showProgressTracker?: boolean
     showAuctionStreaming?: boolean
@@ -66,7 +66,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                                                setButtonClicked,
                                                setAiReplied,
                                                isBottomLayout,
-                                               showCoffeePrompts = false,
+                                               showTravelPrompts = false,
                                                showLogisticsPrompts = false,
                                                showProgressTracker = false,
                                                showAuctionStreaming = false,
@@ -275,9 +275,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     </div>
                 )}
 
-                {showCoffeePrompts && (
+                {showTravelPrompts && (
                     <div className="relative z-10 flex h-9 w-auto w-full max-w-[880px] flex-row items-start gap-2 p-0">
-                        <CoffeePromptsDropdown
+                        <TravelPromptsDropdown
                             visible={true}
                             onSelect={handleDropdownQuery}
                             pattern={pattern}

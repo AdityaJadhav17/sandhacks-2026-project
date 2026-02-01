@@ -10,7 +10,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react"
 
 import { ChevronDown, ChevronUp } from "lucide-react"
 
-import AgentIcon from "@/assets/Coffee_Icon.svg"
+import AgentIcon from "@/assets/Travel_Icon.svg"
 import CheckCircle from "@/assets/CheckCircle.png"
 import {
   GroupCommunicationFeedProps,
@@ -47,13 +47,25 @@ const buildSenderToNodeMap = (graphConfig: any): Record<string, string> => {
         map[node.data.farmName.toLowerCase()] = node.id
       }
 
-      if (node.data.label1 === "Buyer") {
+      if (node.data.label1 === "Traveler") {
         map["Supervisor"] = node.id
         map["supervisor"] = node.id
+        map["Traveler"] = node.id
+        map["traveler"] = node.id
       }
-      if (node.data.label1 === "Tatooine") {
+      if (node.data.label1 === "Scout") {
         map["Tatooine Farm"] = node.id
         map["tatooine farm"] = node.id
+        map["Scout"] = node.id
+        map["scout"] = node.id
+      }
+      if (node.data.label1 === "Analyst") {
+        map["Analyst"] = node.id
+        map["analyst"] = node.id
+      }
+      if (node.data.label1 === "Planner") {
+        map["Planner"] = node.id
+        map["planner"] = node.id
       }
     }
   })
@@ -74,10 +86,16 @@ const getAllAgentNodeIds = (graphConfig: any): string[] => {
 
 const formatAgentName = (agentName: string): string => {
   if (agentName === "Supervisor") {
-    return "Buyer"
+    return "Traveler"
   }
   if (agentName === "Tatooine Farm") {
-    return "Tatooine"
+    return "Scout"
+  }
+  if (agentName === "Shipper") {
+    return "Analyst"
+  }
+  if (agentName === "Accountant") {
+    return "Planner"
   }
 
   return agentName

@@ -67,7 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex flex-col">
           <div className="flex min-h-[36px] w-full items-center gap-2 rounded py-2 pl-2 pr-5">
             <span className="flex-1 font-inter text-sm font-normal leading-5 tracking-[0.25px] text-sidebar-text">
-              Conversation: Order Fulfilment
+              Conversation: Trip Planning
             </span>
           </div>
 
@@ -80,12 +80,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             <div>
               <SidebarDropdown
-                title="Secure Group Communication"
+                title="Multi-Agent Trip Planner"
                 isExpanded={isGroupCommunicationExpanded}
                 onToggle={handleGroupCommunicationToggle}
               >
                 <SidebarItem
-                  title="A2A SLIM"
+                  title="Scout → Analyst → Planner"
                   isSelected={selectedPattern === PATTERNS.GROUP_COMMUNICATION}
                   onClick={() => onPatternChange(PATTERNS.GROUP_COMMUNICATION)}
                 />
@@ -97,7 +97,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex flex-col">
           <div className="flex min-h-[36px] w-full items-center gap-2 rounded py-2 pl-2 pr-5">
             <span className="flex-1 font-inter text-sm font-normal leading-5 tracking-[0.25px] text-sidebar-text">
-              Conversation: Coffee Buying
+              Conversation: Flight Search
             </span>
           </div>
 
@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             <div>
               <SidebarDropdown
-                title="Publish Subscribe"
+                title="Flight Search Network"
                 isExpanded={isPublishSubscribeExpanded}
                 onToggle={handlePublishSubscribeToggle}
               >
@@ -124,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             <div>
               <SidebarDropdown
-                title="Publish Subscribe: Streaming"
+                title="Flight Search: Streaming"
                 isExpanded={isPublishSubscribeStreamingExpanded}
                 onToggle={handlePublishSubscribeStreamingToggle}
               >

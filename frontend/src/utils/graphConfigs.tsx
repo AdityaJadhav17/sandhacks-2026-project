@@ -4,7 +4,7 @@
  **/
 
 import { TiWeatherCloudy } from "react-icons/ti"
-import { Truck, Calculator } from "lucide-react"
+import { Truck, Calculator, Search, Brain, FileText, Plane } from "lucide-react"
 import { Node, Edge } from "@xyflow/react"
 import supervisorIcon from "@/assets/supervisor.png"
 import farmAgentIcon from "@/assets/Grader-Agent.png"
@@ -29,16 +29,12 @@ export interface GraphConfig {
   animationSequence: { ids: string[] }[]
 }
 
-const CoffeeBeanIcon = (
-  <img
-    src={farmAgentIcon}
-    alt="Coffee Farm Agent Icon"
-    className="dark-icon h-4 w-4 object-contain opacity-100"
-  />
+const TravelAgentIcon = (
+  <Plane className="dark-icon h-4 w-4 object-contain opacity-100" />
 )
 
 const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
-  title: "Publish Subscribe Coffee Farm Network",
+  title: "Travel Agent Flight Search Network",
   nodes: [
     {
       id: NODE_IDS.AUCTION_AGENT,
@@ -47,12 +43,12 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
         icon: (
           <img
             src={supervisorIcon}
-            alt="Supervisor Icon"
+            alt="Travel Coordinator Icon"
             className="dark-icon h-4 w-4 object-contain"
           />
         ),
-        label1: "Auction Agent",
-        label2: "Buyer",
+        label1: "Travel Coordinator",
+        label2: "Trip Planner",
         handles: HANDLE_TYPES.SOURCE,
         verificationStatus: VERIFICATION_STATUS.VERIFIED,
         hasBadgeDetails: true,
@@ -75,12 +71,12 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
       id: NODE_IDS.BRAZIL_FARM,
       type: NODE_TYPES.CUSTOM,
       data: {
-        icon: CoffeeBeanIcon,
-        label1: "Brazil",
-        label2: "Coffee Farm Agent",
+        icon: <Search className="dark-icon h-4 w-4 object-contain opacity-100" />,
+        label1: "Scout",
+        label2: "Flight Search Agent",
         handles: HANDLE_TYPES.TARGET,
-        farmName: FarmName?.BrazilCoffeeFarm || "Brazil Coffee Farm",
-        verificationStatus: VERIFICATION_STATUS.FAILED,
+        farmName: FarmName?.BrazilCoffeeFarm || "Scout Agent",
+        verificationStatus: VERIFICATION_STATUS.VERIFIED,
         githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.brazilFarm}`,
         agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}${urlsConfig.agentDirectory.agents.brazilFarm}`,
       },
@@ -91,11 +87,11 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
       id: NODE_IDS.COLOMBIA_FARM,
       type: NODE_TYPES.CUSTOM,
       data: {
-        icon: CoffeeBeanIcon,
-        label1: "Colombia",
-        label2: "Coffee Farm Agent",
+        icon: <Brain className="dark-icon h-4 w-4 object-contain opacity-100" />,
+        label1: "Analyst",
+        label2: "Budget Filter Agent",
         handles: HANDLE_TYPES.ALL,
-        farmName: FarmName?.ColombiaCoffeeFarm || "Colombia Coffee Farm",
+        farmName: FarmName?.ColombiaCoffeeFarm || "Analyst Agent",
         verificationStatus: VERIFICATION_STATUS.VERIFIED,
         hasBadgeDetails: true,
         hasPolicyDetails: true,
@@ -108,11 +104,11 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
       id: NODE_IDS.VIETNAM_FARM,
       type: NODE_TYPES.CUSTOM,
       data: {
-        icon: CoffeeBeanIcon,
-        label1: "Vietnam",
-        label2: "Coffee Farm Agent",
+        icon: <FileText className="dark-icon h-4 w-4 object-contain opacity-100" />,
+        label1: "Planner",
+        label2: "Itinerary Agent",
         handles: HANDLE_TYPES.TARGET,
-        farmName: FarmName?.VietnamCoffeeFarm || "Vietnam Coffee Farm",
+        farmName: FarmName?.VietnamCoffeeFarm || "Planner Agent",
         verificationStatus: VERIFICATION_STATUS.VERIFIED,
         hasBadgeDetails: true,
         hasPolicyDetails: false,
@@ -219,13 +215,13 @@ const PUBLISH_SUBSCRIBE_CONFIG: GraphConfig = {
 }
 
 const GROUP_COMMUNICATION_CONFIG: GraphConfig = {
-  title: "Secure Group Communication Logistics Network",
+  title: "Trip Planner Agent Swarm",
   nodes: [
     {
       id: NODE_IDS.LOGISTICS_GROUP,
       type: NODE_TYPES.GROUP,
       data: {
-        label: "Logistics Group",
+        label: "Trip Planning Pipeline",
       },
       position: { x: 50, y: 50 },
       style: {
@@ -243,12 +239,12 @@ const GROUP_COMMUNICATION_CONFIG: GraphConfig = {
         icon: (
           <img
             src={supervisorIcon}
-            alt="Supervisor Icon"
+            alt="Travel Coordinator Icon"
             className="dark-icon h-4 w-4 object-contain"
           />
         ),
-        label1: "Buyer",
-        label2: "Logistics Agent",
+        label1: "Traveler",
+        label2: "Trip Coordinator",
         handles: HANDLE_TYPES.SOURCE,
         githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticSupervisor}`,
         agentDirectoryLink: urlsConfig.agentDirectory.baseUrl,
@@ -274,16 +270,12 @@ const GROUP_COMMUNICATION_CONFIG: GraphConfig = {
       type: NODE_TYPES.CUSTOM,
       data: {
         icon: (
-          <img
-            src={farmAgentIcon}
-            alt="Farm Agent Icon"
-            className="dark-icon h-4 w-4 object-contain opacity-100"
-          />
+          <Search className="dark-icon h-4 w-4 object-contain opacity-100" />
         ),
-        label1: "Tatooine",
-        label2: "Coffee Farm Agent",
+        label1: "Scout",
+        label2: "Flight Search Agent",
         handles: HANDLE_TYPES.ALL,
-        farmName: "Tatooine Farm",
+        farmName: "Scout Agent",
         githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticFarm}`,
         agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}/`,
       },
@@ -296,12 +288,12 @@ const GROUP_COMMUNICATION_CONFIG: GraphConfig = {
       type: NODE_TYPES.CUSTOM,
       data: {
         icon: (
-          <Truck className="dark-icon h-4 w-4 object-contain opacity-100" />
+          <Brain className="dark-icon h-4 w-4 object-contain opacity-100" />
         ),
-        label1: "Shipper",
-        label2: "Shipper Agent",
+        label1: "Analyst",
+        label2: "Budget Filter Agent",
         handles: HANDLE_TYPES.TARGET,
-        agentName: "Shipper Logistics",
+        agentName: "Analyst Agent",
         githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticShipper}`,
         agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}/`,
       },
@@ -314,12 +306,12 @@ const GROUP_COMMUNICATION_CONFIG: GraphConfig = {
       type: NODE_TYPES.CUSTOM,
       data: {
         icon: (
-          <Calculator className="dark-icon h-4 w-4 object-contain opacity-100" />
+          <FileText className="dark-icon h-4 w-4 object-contain opacity-100" />
         ),
-        label1: "Accountant",
-        label2: "Accountant Agent",
+        label1: "Planner",
+        label2: "Itinerary Agent",
         handles: HANDLE_TYPES.TARGET,
-        agentName: "Accountant Logistics",
+        agentName: "Planner Agent",
         githubLink: `${urlsConfig.github.baseUrl}${urlsConfig.github.agents.logisticAccountant}`,
         agentDirectoryLink: `${urlsConfig.agentDirectory.baseUrl}/`,
       },

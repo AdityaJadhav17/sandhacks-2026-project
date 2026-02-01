@@ -5,7 +5,7 @@
 
 import React, { useState } from "react"
 import { HelpCircle } from "lucide-react"
-import coffeeAgntcyLogo from "@/assets/coffeeAGNTCY_logo.svg"
+import travelAgntcyLogo from "@/assets/travelAGNTCY_logo.svg"
 import ThemeToggleIcon from "../icons/ThemeToggleIcon"
 import { useTheme } from "@/hooks/useTheme"
 import InfoModal from "./InfoModal"
@@ -32,8 +32,8 @@ const Navigation: React.FC = () => {
           <div className="order-0 flex h-[45px] w-32 flex-none flex-grow-0 flex-row items-center gap-1 p-0 opacity-100 sm:w-40">
             <div className="order-0 flex h-[42px] w-auto flex-none flex-grow-0 items-center justify-center gap-0.5 opacity-100">
               <img
-                src={coffeeAgntcyLogo}
-                alt="Coffee AGNTCY Logo"
+                src={travelAgntcyLogo}
+                alt="Travel AGNTCY Logo"
                 className="h-full w-32 object-contain sm:w-40"
               />
             </div>

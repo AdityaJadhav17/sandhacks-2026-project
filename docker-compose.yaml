@@ -344,6 +344,7 @@ services:
       - DIRECTORY_CLIENT_SERVER_ADDRESS=dir-api-server:8888
       - DIRECTORY_CLIENT_TLS_SKIP_VERIFY=true
       - OASF_API_VALIDATION_DISABLE=true
+      - OASF_API_VALIDATION_SCHEMA_URL=https://schema.oasf.agntcy.org
     depends_on:
       - dir-api-server
 

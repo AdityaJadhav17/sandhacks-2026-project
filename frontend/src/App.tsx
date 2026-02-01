@@ -326,7 +326,7 @@ const App: React.FC = () => {
                     setButtonClicked={setButtonClicked}
                     setAiReplied={setAiReplied}
                     isBottomLayout={true}
-                    showCoffeePrompts={
+                    showTravelPrompts={
                         selectedPattern === PATTERNS.PUBLISH_SUBSCRIBE ||
                         selectedPattern === PATTERNS.PUBLISH_SUBSCRIBE_STREAMING
                     }
