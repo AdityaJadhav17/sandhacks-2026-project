@@ -72,7 +72,7 @@ You'll need to obtain the following API keys:
 ### Step 1: Clone the Repository
 
 ```bash
-git clone [<repository-url>](https://github.com/AdityaJadhav17/sandhacks-2026-project)
+git clone https://github.com/AdityaJadhav17/sandhacks-2026-project.git
 cd sandhacks-2026-project
 ```
 
