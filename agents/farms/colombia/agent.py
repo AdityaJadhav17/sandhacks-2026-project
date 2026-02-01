@@ -1,0 +1,330 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express oqr implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import logging
+
+from langgraph.graph import MessagesState
+from langchain_core.messages import AIMessage
+from langchain_core.prompts import PromptTemplate
+from langgraph.graph import StateGraph, END
+
+from agntcy_app_sdk.factory import AgntcyFactory
+from ioa_observe.sdk.decorators import agent, graph
+
+from agents.exceptions import AuthError
+from agents.mcp_servers.utils import invoke_payment_mcp_tool
+from config.config import (
+    DEFAULT_MESSAGE_TRANSPORT,
+    TRANSPORT_SERVER_ENDPOINT,
+)
+from common.llm import get_llm
+
+logger = logging.getLogger("lungo.colombia_farm_agent.agent")
+
+# Initialize a multi-protocol, multi-transport agntcy factory.
+factory = AgntcyFactory("lungo.colombia_farm", enable_tracing=True)
+
+# --- 1. Define Node Names as Constants ---
+class NodeStates:
+    SUPERVISOR = "supervisor"
+    INVENTORY = "inventory_node"
+    ORDERS = "orders_node"
+    GENERAL_RESPONSE = "general_response_node"
+    WEATHER_FORECAST = "weather_forecast_node"
+
+# --- 2. Define the Graph State ---
+class GraphState(MessagesState):
+    """
+    Represents the state of our graph, passed between nodes.
+    """
+    next_node: str
+    weather_forecast_success: bool
+
+# --- 3. Implement the LangGraph Application Class ---
+@agent(name="colombia_farm_agent")
+class FarmAgent:
+    def __init__(self):
+        """
+        Initializes the CustomerServiceAgent with an LLM and builds the LangGraph workflow.
+
+        Args:
+            llm_model (str): The name of the OpenAI LLM model to use (e.g., "gpt-4o", "gpt-3.5-turbo").
+        """
+        self.supervisor_llm = None
+        self.inventory_llm = None
+        self.orders_llm = None
+        self.weather_forecast_llm = None
+
+        self.app = self._build_graph()
+
+    # --- Node Definitions ---
+
+    def _supervisor_node(self, state: GraphState) -> dict:
+        """
+        Determines the intent of the user's message and routes to the appropriate node.
+        """
+        if not self.supervisor_llm:
+            self.supervisor_llm = get_llm()
+
+        prompt = PromptTemplate(
+            template="""You are a coffee farm manager in Colombia who delegates farm cultivation and global sales. Based on the 
+            user's message, determine if it's related to 'inventory' or 'orders'.
+            Respond with 'inventory' if the message is about checking yield, stock, product availability, or specific coffee item details.
+            Respond with 'orders' if the message is about checking order status, placing an order, or modifying an existing order.
+            If unsure, respond with 'general'.
+
+            User message: {user_message}
+            """,
+            input_variables=["user_message"]
+        )
+
+        chain = prompt | self.supervisor_llm
+        response = chain.invoke({"user_message": state["messages"]})
+        intent = response.content.strip().lower()
+
+        logger.info(f"Supervisor intent determined: {intent}")  # Log the intent for debugging
+
+        if "inventory" in intent:
+            # return {"next_node": NodeStates.INVENTORY, "messages": state["messages"]}
+            return {"next_node": NodeStates.WEATHER_FORECAST, "messages": state["messages"]}
+        elif "orders" in intent:
+            return {"next_node": NodeStates.ORDERS, "messages": state["messages"]}
+        else:
+            return {"next_node": NodeStates.GENERAL_RESPONSE, "messages": state["messages"]}
+        
+    async def _get_weather_forecast(self,state: GraphState) -> str:
+        """
+        This method creates an agntcy-app-sdk transport instance and MCP client to communicate with the 
+        "lungo_weather_service" agent, lists available tools, and calls the "get_forecast" tool with a 
+        fixed location ("colombia"). It handles both streamed and non-streamed responses, aggregates the 
+        forecast content, and returns it wrapped in an AIMessage inside a dictionary under the "messages" key.
+
+        If an error occurs during the MCP tool call, it logs the error and returns an error message similarly wrapped.
+
+        Returns:
+            dict: A dictionary containing a list with a single AIMessage object holding the weather forecast string
+                or an error message if the call fails.
+        """
+        transport_instance = factory.create_transport(
+            DEFAULT_MESSAGE_TRANSPORT, 
+            endpoint=TRANSPORT_SERVER_ENDPOINT, 
+            name="default/default/mcp_client")
+        mcp_client = factory.create_client(
+            "MCP",
+            agent_topic="lungo_weather_service",
+            transport=transport_instance,
+            message_timeout=45
+        )
+
+        # view available tools
+        try:
+            async with mcp_client as client:
+                response = await client.list_tools()
+                available_tools = [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.inputSchema,
+                    }
+                    for tool in response.tools
+                ]
+                logger.info(f"Available tools: {available_tools}")
+
+                result = await client.call_tool(
+                    name="get_forecast",
+                    arguments={"location": "colombia"},
+                )
+                logger.info(f"Tool call result: {result}")
+
+                mcp_call_result = ""
+                if hasattr(result, "__aiter__"):
+                    # gather streamed chunks
+                    async for chunk in result:
+                        delta = chunk.choices[0].delta
+                        mcp_call_result += delta.content or ""
+                else:
+                    content_list = result.content
+                    if isinstance(content_list, list) and len(content_list) > 0:
+                        mcp_call_result = content_list[0].text
+                    else:
+                        mcp_call_result = "No content returned from tool."
+
+                logger.info(f"Weather forecast result: {mcp_call_result}")
+                return {"weather_forecast_success": True, "messages": [AIMessage(mcp_call_result)]}
+        except Exception as e:
+            logger.error(f"Error during MCP tool call: {e}")
+            return {"weather_forecast_success": False, "messages": [AIMessage(f"Weather Forecast MCP Server was Unavailable")]}
+        finally:
+            pass
+
+    async def _inventory_node(self, state: GraphState) -> dict:
+        """
+        Handles inventory-related queries using an LLM to formulate responses.
+        """
+        if not state["weather_forecast_success"]:
+            err_msg = "Cannot estimate yield because Weather Forecast MCP Server was Unavailable."
+            logger.warning(err_msg)
+            return {"messages": [AIMessage(err_msg)]}
+        
+        if not self.inventory_llm:
+            self.inventory_llm = get_llm()
+
+        user_message = state["messages"]
+
+        prompt = PromptTemplate(
+            template="""You are a helpful Colombian coffee farm manager.
+                You should estimate the seasonal coffee yield after checking the weather given.
+                Always return a numeric yield estimate with units (e.g. "5000 lbs").
+                No explanation needed.
+
+                User question: {user_message}
+                """,
+            input_variables=["user_message"]
+        )
+        chain = prompt | self.inventory_llm
+
+        llm_response = chain.invoke({
+            "user_message": user_message,
+        }).content
+
+        logger.info(f"Inventory response generated: {llm_response}")
+
+        return {"messages": [AIMessage(llm_response)]}
+
+    async def _orders_node(self, state: GraphState) -> dict:
+        """
+        Handles order-related queries using an LLM to formulate responses.
+        """
+        if not self.orders_llm:
+            self.orders_llm = get_llm()
+
+        user_message = state["messages"]
+
+        logger.info(f"Received order query: {user_message}")
+
+        # Call MCP tools before processing the order
+        try:
+            payment_result = await invoke_payment_mcp_tool("create_payment")
+            logger.info(f"Payment result: {payment_result}")
+
+            transactions_details = await invoke_payment_mcp_tool("list_transactions")
+            logger.info(f"Transactions details: {transactions_details}")
+
+        except AuthError as auth_err:
+            return {"messages": [AIMessage(str(auth_err))]}
+
+        except Exception as e:
+            logger.error(f"Error during MCP tool calls: {e}")
+            return {"messages": [AIMessage("Failed to process order due to MCP tool errors.")]}
+
+        # Simulate data retrieval - in a real app, this would be a database/API call
+        mock_order_data = {
+            "12345": {"status": "processing", "estimated_delivery": "2 business days"},
+            "67890": {"status": "shipped", "tracking_number": "ABCDEF123"}
+        }
+
+        logger.info(f"Mock order data: {mock_order_data}")
+
+        prompt = PromptTemplate(
+            template="""You are an order assistant. Based on the user's question and the following order data, provide a concise and helpful response.
+            If they ask about a specific order number, provide its status. 
+            If they ask about placing order an order, generate a random order id and tracking number.
+
+            Order Data: {order_data}
+            User question: {user_message}
+            """,
+            input_variables=["user_message", "order_data"]
+        )
+        chain = prompt | self.orders_llm
+
+        llm_response = chain.invoke({
+            "user_message": user_message,
+            "order_data": str(mock_order_data) # Pass data as string for LLM context
+        }).content
+
+        return {"messages": [AIMessage(llm_response)]}
+
+    def _general_response_node(self, state: GraphState) -> dict:
+        """
+        Provides a fallback response for unclear or out-of-scope messages.
+        """
+        response = "I'm designed to help with inventory and order-related questions. Could you please rephrase your request?"
+        return {"messages": [AIMessage(response)]}
+
+    # --- Graph Building Method ---
+
+    @graph(name="colombia_farm_graph")
+    def _build_graph(self):
+        """
+        Builds and compiles the LangGraph workflow.
+        """
+        workflow = StateGraph(GraphState)
+
+        # Add nodes
+        workflow.add_node(NodeStates.SUPERVISOR, self._supervisor_node)
+        workflow.add_node(NodeStates.INVENTORY, self._inventory_node)
+        workflow.add_node(NodeStates.ORDERS, self._orders_node)
+        workflow.add_node(NodeStates.GENERAL_RESPONSE, self._general_response_node)
+        workflow.add_node(NodeStates.WEATHER_FORECAST, self._get_weather_forecast)
+
+        # Set the entry point
+        workflow.set_entry_point(NodeStates.SUPERVISOR)
+
+        # Add conditional edges from the supervisor
+        workflow.add_conditional_edges(
+            NodeStates.SUPERVISOR,
+            lambda state: state["next_node"],
+            {
+                # NodeStates.INVENTORY: NodeStates.INVENTORY,
+                NodeStates.ORDERS: NodeStates.ORDERS,
+                NodeStates.GENERAL_RESPONSE: NodeStates.GENERAL_RESPONSE,
+                NodeStates.WEATHER_FORECAST: NodeStates.WEATHER_FORECAST,
+            },
+        )
+
+        # Add edges from the specific nodes to END
+        workflow.add_edge(NodeStates.WEATHER_FORECAST, NodeStates.INVENTORY)
+        workflow.add_edge(NodeStates.INVENTORY, END)
+        workflow.add_edge(NodeStates.ORDERS, END)
+        workflow.add_edge(NodeStates.GENERAL_RESPONSE, END)
+
+        return workflow.compile()
+
+    async def ainvoke(self, user_message: str) -> dict:
+        """
+        Invokes the graph with a user message.
+
+        Args:
+            user_message (str): The current message from the user.
+
+        Returns:
+            str: The final state of the graph after processing the message.
+        """
+        inputs = {"messages": [user_message]}
+        result = await self.app.ainvoke(inputs)
+
+        messages = result.get("messages", [])
+        if not messages:
+            raise RuntimeError("No messages found in the graph response.")
+
+        # Find the last AIMessage with non-empty content
+        for message in reversed(messages):
+            if isinstance(message, AIMessage) and message.content.strip():
+                logger.debug(f"Valid AIMessage found: {message.content.strip()}")
+                return message.content.strip()
+
+        # If no valid AIMessage found, return the last message as a fallback
+        return messages[-1].content.strip() if messages else "No valid response generated."
