@@ -1,14 +1,13 @@
-# Travel Planning Agent
+# Travel Agntcy
 
-A Travel Planning Agent that finds the **cheapest flight + hotel combinations** using SerpAPI.
+A Travel Planning Agent that finds the **cheapest flight + hotel combinations + things to do** using SerpAPI.
 
 ## Overview
 
 The Travel Planning Agent is an AI-powered travel assistant that:
 - Accepts trip requests (origin, destination, date range)
-- Fetches flight and hotel data from **SerpAPI**
+- Fetches flight, hotel, and activities data from **SerpAPI**
 - Finds the **cheapest flight + hotel** combination
-- Enforces timing constraints: **hotel check-in ≥ flight arrival + configurable gap**
 
 ### Architecture
 
